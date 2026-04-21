@@ -10,7 +10,7 @@
 
 import torch
 
-from rocm_mxfp8_mm import triton_mxfp8_grouped_mm
+from kernels import triton_mxfp8_grouped_mm
 from utils import generate_jagged_offs, is_MI350, to_mx
 
 

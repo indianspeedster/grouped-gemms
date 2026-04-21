@@ -19,7 +19,7 @@ import torch
 from tabulate import tabulate
 from tqdm import tqdm
 
-from rocm_mxfp8_mm import triton_mxfp8_grouped_mm
+from kernels import triton_mxfp8_grouped_mm
 from utils import (
     benchmark_cuda_function_in_microseconds,
     generate_jagged_offs,

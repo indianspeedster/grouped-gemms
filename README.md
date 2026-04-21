@@ -13,14 +13,21 @@ chain on the MFMA scale load.
 
 ## Contents
 
-| File | Purpose |
+| Path | Purpose |
 | --- | --- |
-| `rocm_mxfp8_mm.py` | Kernel (`triton_mxfp8_grouped_mm`, `triton_mxfp8_wgrad`) |
+| `kernels/forward.py` | `triton_mxfp8_grouped_mm` — forward + dgrad (A @ B^T per group) |
+| `kernels/backward.py` | `triton_mxfp8_wgrad` — weight gradient (A^T @ B per group) |
+| `kernels/_common.py` | ROCm availability probe shared by both kernels |
+| `kernels/__init__.py` | Re-exports both entry points |
 | `utils.py` | Minimal `to_mx`, `generate_jagged_offs`, bench helper |
 | `bench.py` | 36-shape Llama4 bf16-vs-MXFP8 bench (mirrors torchao CI) |
 | `test_correctness.py` | Sanity check vs bf16 reference on small shapes |
 
-No torchao dependency at runtime.
+No torchao dependency at runtime. Import from the package:
+
+```python
+from kernels import triton_mxfp8_grouped_mm, triton_mxfp8_wgrad
+```
 
 ## Requirements
 
