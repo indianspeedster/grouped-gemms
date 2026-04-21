@@ -1,8 +1,21 @@
 # Runtime dependencies for the MXFP8 grouped-GEMM kernel and bench.
-# torch / triton must be the ROCm build matching your MI350+ install —
-# do NOT rely on the version constraints here to pick a ROCm wheel, install
-# torch first per https://pytorch.org/get-started/locally/ (ROCm).
-torch
-triton
-tabulate
-tqdm
+#
+# Tested against (on AMD MI355X, gfx950, ROCm 7.1.52802):
+#   torch    == 2.13.0.dev20260416+rocm7.1
+#   triton   == 3.7.0
+#   tabulate == 0.10.0
+#   tqdm     == 4.67.3
+#
+# Install torch+triton from the PyTorch ROCm index first — the torch build
+# above is a nightly dev wheel and is NOT on PyPI. See:
+#   https://pytorch.org/get-started/locally/  (select "ROCm")
+#
+# Example:
+#   pip install --pre torch==2.13.0.dev20260416+rocm7.1 \
+#       --index-url https://download.pytorch.org/whl/nightly/rocm7.1
+#   pip install -r requirements.txt
+
+torch == 2.13.0.dev20260416+rocm7.1
+triton == 3.7.0
+tabulate == 0.10.0
+tqdm == 4.67.3
