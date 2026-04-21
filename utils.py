@@ -52,11 +52,16 @@ def generate_jagged_offs(
 
 # MXFP8 quantization -------------------------------------------------------
 #
-# e8m0 = 8-bit biased exponent (no mantissa, no sign); value = 2^(b - 127)
-# where b is the stored byte. b=0 is reserved as NaN; valid range 0..254.
-# fp8 e4m3fn max representable = 448.0.
+# Matches the FLOOR mode of torchao.prototype.mx_formats.mx_tensor.to_mx:
+#   scale_e8m0_unbiased = floor(log2(max_abs)) - F8E4M3_MAX_POW2
+#   stored_u8 = scale_e8m0_unbiased + 127 (e8m0 bias), clamped to [0, 254]
+#
+# F8E4M3_MAX_POW2 = 8 because floor(log2(448)) = 8 (2^8 = 256 <= 448 < 512).
+# e8m0 byte 0 is reserved as NaN; valid range 1..254 (stored as uint8).
+# fp8_e4m3fn max representable = 448.0.
 
 _FP8_E4M3_MAX = 448.0
+_F8E4M3_MAX_POW2 = 8
 
 
 def to_mx(
@@ -65,9 +70,10 @@ def to_mx(
     """Quantize ``data`` to MXFP8 (float8_e4m3fn + per-block e8m0 scales)
     along the last dim. Returns ``(scales_e8m0_as_uint8, data_fp8)``.
 
-    Minimal pure-pytorch implementation — no NaN-scale handling, no special
-    denormal tricks, no stochastic rounding. Sufficient for benchmarking
-    and sanity correctness checks against a bf16 reference.
+    Mirrors torchao's FLOOR scaling mode (the default in
+    ``torchao.prototype.mx_formats.mx_tensor.to_mx``). Extracts the
+    power-of-2 exponent directly from the fp32 bit pattern — same formula
+    ao uses.
     """
     assert elem_dtype is torch.float8_e4m3fn, "only e4m3fn supported here"
     assert data.shape[-1] % block_size == 0, (
@@ -77,12 +83,16 @@ def to_mx(
     orig_shape = data.shape
     data_blocked = data.reshape(-1, data.shape[-1] // block_size, block_size)
 
-    absmax = data_blocked.abs().amax(dim=-1, keepdim=True).clamp(min=1e-30)
+    max_abs = data_blocked.abs().amax(dim=-1, keepdim=True).to(torch.float32)
+    # Avoid log2(0); keep in normal-range fp32 for clean exponent extraction.
+    max_abs = max_abs.clamp(min=torch.finfo(torch.float32).tiny)
 
-    # scale chosen so absmax / scale <= fp8_max; e8m0 stores floor(log2(...))
-    scale_exp = torch.floor(torch.log2(absmax / _FP8_E4M3_MAX))
-    # e8m0 byte = scale_exp + 127, clamped to [0, 254]
-    scale_u8 = (scale_exp + 127).clamp(0, 254).to(torch.uint8)
+    # floor(log2(max_abs)) via fp32 bit pattern (bits 30..23 = biased exp, bias 127).
+    max_abs_int = max_abs.view(torch.int32)
+    extracted_pow2 = ((max_abs_int >> 23) & 0xFF) - 127
+    scale_e8m0_unbiased = extracted_pow2 - _F8E4M3_MAX_POW2
+
+    scale_u8 = (scale_e8m0_unbiased + 127).clamp(0, 254).to(torch.uint8)
 
     scale_f32 = torch.exp2(scale_u8.to(torch.float32) - 127)
     scaled = (data_blocked.to(torch.float32) / scale_f32).clamp(
