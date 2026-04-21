@@ -1,4 +1,4 @@
-# groupedGemms
+# grouped-gemms
 
 Standalone ROCm **MXFP8 grouped GEMM** Triton kernel for AMD MI350+ (gfx950 / CDNA4),
 extracted from the `rocm-mxfp8-aiter-port` branch of
@@ -10,6 +10,28 @@ scales directly; scheduling follows AMD aiter's MoE matmul (XCD swizzle +
 GROUP_M L2 reuse + packed expert-to-tile routing), with a CDNA4-specific
 pre-shuffled scale layout that removes the `#blocked → #linear1` permute
 chain on the MFMA scale load.
+
+## Quickstart
+
+```bash
+git clone https://github.com/indianspeedster/grouped-gemms.git
+cd grouped-gemms
+
+# Creates a clean venv with the exact tested torch / triton-rocm versions.
+python3 -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+
+# Sanity-check correctness (SQNR vs torch._grouped_mm, 27 dB threshold).
+python test_correctness.py
+
+# Run the 36-shape Llama4 bench (bf16 vs MXFP8 + geomean speedup).
+python bench.py
+```
+
+Expected on a healthy MI355X: all 4 correctness shapes pass at ~27.6 dB
+SQNR, bench geomean ≈ 1.4× over bf16.
 
 ## Contents
 
@@ -33,33 +55,44 @@ from kernels import triton_mxfp8_grouped_mm, triton_mxfp8_wgrad
 
 - AMD MI350+ (gfx950) — the kernel's CDNA4_SCALE fast-path needs
   `v_mfma_scale_f32_16x16x128_f8f6f4`; older arches will fail to compile
-- PyTorch ROCm build with `torch.float8_e4m3fn` support
+- PyTorch ROCm build with `torch.float8_e4m3fn` support (tested on torch
+  `2.13.0.dev20260416+rocm7.1`)
 - Triton with ROCm backend that supports `tl.dot_scaled` and
-  `matrix_instr_nonkdim=16/32`
+  `matrix_instr_nonkdim=16/32` (tested on `triton-rocm 3.7.0+gitb4e20bbe`,
+  pulled in automatically as a torch dep)
 
-```bash
-pip install -r requirements.txt
-```
+`pip install -r requirements.txt` resolves the torch nightly wheel via the
+`--extra-index-url` line in the file; no separate PyTorch install step is
+needed. See `requirements.txt` for the full tested-against versions.
 
-## Run the bench
+## Bench
 
 ```bash
 python bench.py
 ```
 
-This walks the same 36 Llama4 shapes the torchao CI bench uses
+Walks the same 36 Llama4 shapes the torchao CI bench uses
 (`E ∈ {1, 2, 4, 8}`, `M = 16640`, `N, K ∈ {2048, 5120, 8192}`) and prints
-per-shape bf16 µs, MXFP8 µs, TFLOPs, speedup, plus a geomean.
+per-shape bf16 µs, MXFP8 µs, TFLOPs, speedup, plus a geomean. Latest run
+on MI355X: **1.394× geomean**, best 2.18× (E=8, N=K=2048), worst 1.16×
+(E=2, K=8192).
 
-## Run the correctness test
+## Correctness test
 
 ```bash
 python test_correctness.py
 ```
 
-Compares `triton_mxfp8_grouped_mm` against a dequantized-input bf16 matmul
-reference on three small shapes; tolerances are loose (MXFP8 is lossy) —
-the goal is to catch indexing / layout regressions.
+Compares `triton_mxfp8_grouped_mm` output against `torch._grouped_mm` on the
+original bf16 inputs using the same **SQNR metric and 27.0 dB threshold** as
+torchao's `test/prototype/moe_training/test_mxfp8_grouped_mm.py`:
+
+```
+compute_error(x, y) = 20 * log10(||x|| / ||x - y||)   # dB
+min_sqnr = 27.0                                        # matches ao forward test
+```
+
+Covers 4 shapes (E ∈ {1, 4, 8}); typical passing SQNR is ~27.6 dB.
 
 ## Kernel summary
 
