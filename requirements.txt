@@ -1,21 +1,26 @@
 # Runtime dependencies for the MXFP8 grouped-GEMM kernel and bench.
 #
+# `pip install -r requirements.txt` works in one shot — the --extra-index-url
+# below points pip at the PyTorch ROCm nightly wheel host.
+#
 # Tested against (on AMD MI355X, gfx950, ROCm 7.1.52802):
-#   torch    == 2.13.0.dev20260416+rocm7.1
-#   triton   == 3.7.0
-#   tabulate == 0.10.0
-#   tqdm     == 4.67.3
+#   torch       == 2.13.0.dev20260416+rocm7.1
+#   triton-rocm == 3.7.0+gitb4e20bbe   (pulled in by torch as a dep)
+#   numpy       == 2.2.6
+#   tabulate    == 0.10.0
+#   tqdm        == 4.67.3
 #
-# Install torch+triton from the PyTorch ROCm index first — the torch build
-# above is a nightly dev wheel and is NOT on PyPI. See:
-#   https://pytorch.org/get-started/locally/  (select "ROCm")
+# The ROCm-flavored triton is `triton-rocm`, NOT stock `triton` from PyPI;
+# torch depends on it, so we don't list it explicitly. Do not also install
+# stock `triton` — it will clash with `triton-rocm`.
 #
-# Example:
+# If pip can't resolve the torch wheel, install torch manually first:
 #   pip install --pre torch==2.13.0.dev20260416+rocm7.1 \
 #       --index-url https://download.pytorch.org/whl/nightly/rocm7.1
-#   pip install -r requirements.txt
+
+--extra-index-url https://download.pytorch.org/whl/nightly/rocm7.1
 
 torch == 2.13.0.dev20260416+rocm7.1
-triton == 3.7.0
+numpy == 2.2.6
 tabulate == 0.10.0
 tqdm == 4.67.3
