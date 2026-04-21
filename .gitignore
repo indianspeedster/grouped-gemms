@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.vscode/
+.idea/
+*.log
+*.swp
+.DS_Store
+
+# Triton / torch caches
+.triton/
+.cache/
