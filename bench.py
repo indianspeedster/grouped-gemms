@@ -69,17 +69,16 @@ def bench_mxfp8_grouped_mm_rocm(A, B_t, offs, block_size: int = 32) -> float:
         B_nkK, elem_dtype=torch.float8_e4m3fn, block_size=block_size
     )
 
-    E = offs.shape[0]
-    Mg = A.shape[0]
-    offs_mxfp8 = generate_jagged_offs(E, Mg, multiple_of=block_size)
-
+    # Use the caller's offs directly so bf16 and MXFP8 see the same jagged
+    # partition. The caller is responsible for 32-alignment (MX block_size);
+    # the bench's run_experiment enforces that.
     return benchmark_cuda_function_in_microseconds(
         triton_mxfp8_grouped_mm,
         A_fp8,
         B_fp8,
         A_scales,
         B_scales,
-        offs_mxfp8,
+        offs,
     )
 
 
@@ -91,9 +90,11 @@ def run_experiment(config: ExperimentConfig) -> ExperimentResult:
         (e, n, k), dtype=torch.bfloat16, device=device, requires_grad=True
     ).transpose(-2, -1)
 
-    # jagged offsets for bf16 baseline (16-aligned — torch._grouped_mm's requirement)
+    # Single jagged-offs draw, 32-aligned (MX block_size). 32 is a multiple
+    # of 16, so torch._grouped_mm accepts it too — both paths see the
+    # identical per-expert token partition.
     Mg = A.shape[0]
-    offs = generate_jagged_offs(e, Mg, multiple_of=16)
+    offs = generate_jagged_offs(e, Mg, multiple_of=32)
 
     bf16_us = benchmark_cuda_function_in_microseconds(
         torch._grouped_mm, A, B_t, offs, out_dtype=torch.bfloat16,
@@ -152,6 +153,10 @@ def main():
     del args  # only one shape set for now
 
     torch.random.manual_seed(123)
+    # generate_jagged_offs uses Python's random.sample — seed that too so
+    # runs are deterministic across invocations.
+    import random
+    random.seed(123)
     configs = get_configs()
     results = [Experiment(config=c, result=run_experiment(c)) for c in tqdm(configs)]
     print_results(results)
