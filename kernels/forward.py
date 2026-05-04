@@ -393,16 +393,63 @@ if _rocm_mxfp8_available:
         x = x.permute(0, 2, 4, 1, 3, 5).contiguous()
         return x.reshape(M // 32, Ks * 32)
 
-    def _pick_block_nk(N: int, K: int) -> tuple:
-        """Shape-aware (BLOCK_N, BLOCK_K) pick, derived from an 864-run
-        per-shape sweep on gfx950/MI355X.
+    # Per-shape best configs from a 36-shape × 288-config sweep on MI355X
+    # (8-GPU parallel, see tune_driver.py / tune_worker.py). Search space:
+    # BLOCK_M ∈ {64,128,256}, BLOCK_N ∈ {128,256}, BLOCK_K ∈ {128,256},
+    # GROUP_M ∈ {1,4,8}, num_warps ∈ {4,8}, num_stages ∈ {1,2},
+    # waves_per_eu ∈ {0,2}. Comments show the swept median runtime.
+    _BEST_CFGS = {
+        (1, 2048, 2048): dict(BLOCK_M=128, BLOCK_N=128, BLOCK_K=128, GROUP_M=8, num_warps=4, num_stages=2, waves_per_eu=0),  # 100.1us
+        (1, 2048, 5120): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=0),  # 239.0us
+        (1, 2048, 8192): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=0),  # 365.5us
+        (1, 5120, 2048): dict(BLOCK_M=128, BLOCK_N=128, BLOCK_K=128, GROUP_M=8, num_warps=4, num_stages=2, waves_per_eu=0),  # 216.2us
+        (1, 5120, 5120): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=2),  # 506.5us
+        (1, 5120, 8192): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=0),  # 775.8us
+        (1, 8192, 2048): dict(BLOCK_M=128, BLOCK_N=128, BLOCK_K=128, GROUP_M=4, num_warps=4, num_stages=2, waves_per_eu=0),  # 338.8us
+        (1, 8192, 5120): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=4, num_warps=8, num_stages=2, waves_per_eu=0),  # 770.2us
+        (1, 8192, 8192): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=0),  # 1166.8us
+        (2, 2048, 2048): dict(BLOCK_M=128, BLOCK_N=128, BLOCK_K=128, GROUP_M=8, num_warps=4, num_stages=2, waves_per_eu=0),  # 97.5us
+        (2, 2048, 5120): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=2),  # 243.7us
+        (2, 2048, 8192): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=0),  # 380.0us
+        (2, 5120, 2048): dict(BLOCK_M=128, BLOCK_N=128, BLOCK_K=128, GROUP_M=4, num_warps=4, num_stages=2, waves_per_eu=0),  # 221.7us
+        (2, 5120, 5120): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=0),  # 515.4us
+        (2, 5120, 8192): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=0),  # 781.6us
+        (2, 8192, 2048): dict(BLOCK_M=128, BLOCK_N=128, BLOCK_K=128, GROUP_M=4, num_warps=4, num_stages=2, waves_per_eu=0),  # 349.5us
+        (2, 8192, 5120): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=0),  # 787.9us
+        (2, 8192, 8192): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=2),  # 1174.8us
+        (4, 2048, 2048): dict(BLOCK_M=128, BLOCK_N=128, BLOCK_K=128, GROUP_M=8, num_warps=4, num_stages=2, waves_per_eu=0),  # 99.8us
+        (4, 2048, 5120): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=2),  # 249.6us
+        (4, 2048, 8192): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=0),  # 377.0us
+        (4, 5120, 2048): dict(BLOCK_M=128, BLOCK_N=128, BLOCK_K=128, GROUP_M=4, num_warps=4, num_stages=2, waves_per_eu=0),  # 233.7us
+        (4, 5120, 5120): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=0),  # 527.6us
+        (4, 5120, 8192): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=2),  # 796.5us
+        (4, 8192, 2048): dict(BLOCK_M=128, BLOCK_N=128, BLOCK_K=128, GROUP_M=4, num_warps=4, num_stages=2, waves_per_eu=0),  # 358.2us
+        (4, 8192, 5120): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=2),  # 790.2us
+        (4, 8192, 8192): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=2),  # 1197.6us
+        (8, 2048, 2048): dict(BLOCK_M=128, BLOCK_N=128, BLOCK_K=128, GROUP_M=8, num_warps=4, num_stages=2, waves_per_eu=0),  # 110.7us
+        (8, 2048, 5120): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=2),  # 259.5us
+        (8, 2048, 8192): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=2),  # 383.2us
+        (8, 5120, 2048): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=128, GROUP_M=1, num_warps=8, num_stages=2, waves_per_eu=0),  # 252.8us
+        (8, 5120, 5120): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=2),  # 539.0us
+        (8, 5120, 8192): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=2),  # 816.9us
+        (8, 8192, 2048): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=2),  # 390.3us
+        (8, 8192, 5120): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=2),  # 815.5us
+        (8, 8192, 8192): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=4, num_warps=8, num_stages=2, waves_per_eu=0),  # 1281.6us
+    }
 
-        - (N=2048, K=2048): 128/128 (best by 7.6-8.7% over 256/256)
-        - else: 256/256
-        """
-        if N <= 2048 and K <= 2048:
-            return 128, 128
-        return 256, 256
+    # Heuristic for shapes outside the swept grid. The sweep showed BLOCK_N=128
+    # always wins; BLOCK_M/BLOCK_K/num_warps split cleanly on K (small K wants
+    # 128/128/4-warp, large K wants 256/256/8-warp).
+    _FALLBACK_SMALL_K = dict(BLOCK_M=128, BLOCK_N=128, BLOCK_K=128, GROUP_M=8, num_warps=4, num_stages=2, waves_per_eu=0)
+    _FALLBACK_LARGE_K = dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=0)
+
+    def _pick_config(E: int, N: int, K: int) -> dict:
+        """Per-shape best config from the swept Llama4 grid; coarse fallback
+        for unseen shapes."""
+        cfg = _BEST_CFGS.get((E, N, K))
+        if cfg is not None:
+            return cfg
+        return _FALLBACK_SMALL_K if K <= 2048 else _FALLBACK_LARGE_K
 
     def triton_mxfp8_grouped_mm(
         input_act: torch.Tensor,
@@ -411,14 +458,18 @@ if _rocm_mxfp8_available:
         weight_scales: torch.Tensor,
         group_end_offsets: torch.Tensor,
         out_dtype: torch.dtype = torch.bfloat16,
-        BLOCK_M: int = 128,
-        BLOCK_N: int = None,   # None = shape-aware default
-        BLOCK_K: int = None,   # None = shape-aware default
-        GROUP_M: int = 8,
+        # All tunables default to None → looked up via _pick_config(E, N, K).
+        # An explicit value overrides the lookup (used by the per-shape sweep).
+        BLOCK_M: int = None,
+        BLOCK_N: int = None,
+        BLOCK_K: int = None,
+        GROUP_M: int = None,
         XCD_SWIZZLE: int = 8,
-        num_warps: int = 8,
-        num_stages: int = 2,
+        num_warps: int = None,
+        num_stages: int = None,
         matrix_instr_nonkdim: int = 32,
+        waves_per_eu: int = None,
+        kpack: int = 1,
     ) -> torch.Tensor:
         """MXFP8 grouped GEMM: ``output[g] = input_act[group_g] @ weight[g]^T``.
 
@@ -437,12 +488,14 @@ if _rocm_mxfp8_available:
         E, N, K2 = weight.shape
         assert K == K2, f"K mismatch: A={K}, B={K2}"
 
-        if BLOCK_N is None or BLOCK_K is None:
-            _bn, _bk = _pick_block_nk(N, K)
-            if BLOCK_N is None:
-                BLOCK_N = _bn
-            if BLOCK_K is None:
-                BLOCK_K = _bk
+        _cfg = _pick_config(E, N, K)
+        if BLOCK_M is None: BLOCK_M = _cfg["BLOCK_M"]
+        if BLOCK_N is None: BLOCK_N = _cfg["BLOCK_N"]
+        if BLOCK_K is None: BLOCK_K = _cfg["BLOCK_K"]
+        if GROUP_M is None: GROUP_M = _cfg["GROUP_M"]
+        if num_warps is None: num_warps = _cfg["num_warps"]
+        if num_stages is None: num_stages = _cfg["num_stages"]
+        if waves_per_eu is None: waves_per_eu = _cfg["waves_per_eu"]
 
         # CDNA4_SCALE path: pre-shuffle W and X scales into the layout that
         # v_mfma_scale_f32_16x16x128_f8f6f4 consumes natively, so the kernel
@@ -516,8 +569,8 @@ if _rocm_mxfp8_available:
             W_CACHE_MODIFIER=None,
             UPCAST_INDICES=False,
             num_warps=num_warps, num_stages=num_stages,
-            matrix_instr_nonkdim=nonkdim, kpack=1,
-            waves_per_eu=0,
+            matrix_instr_nonkdim=nonkdim, kpack=kpack,
+            waves_per_eu=waves_per_eu,
         )
         return output
 
