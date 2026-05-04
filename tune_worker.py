@@ -19,8 +19,8 @@ import traceback
 
 
 def build_search_space():
-    """288 configs, structured with cheapest-first ordering so any partial
-    result is still informative."""
+    """576 configs (288 prior × 2 nonkdim values). Structured with
+    cheapest-first ordering so any partial result is still informative."""
     cfgs = []
     for BLOCK_M in (64, 128, 256):
         for BLOCK_N in (128, 256):
@@ -29,15 +29,17 @@ def build_search_space():
                     for num_warps in (4, 8):
                         for num_stages in (1, 2):
                             for waves_per_eu in (0, 2):
-                                cfgs.append({
-                                    "BLOCK_M": BLOCK_M,
-                                    "BLOCK_N": BLOCK_N,
-                                    "BLOCK_K": BLOCK_K,
-                                    "GROUP_M": GROUP_M,
-                                    "num_warps": num_warps,
-                                    "num_stages": num_stages,
-                                    "waves_per_eu": waves_per_eu,
-                                })
+                                for matrix_instr_nonkdim in (16, 32):
+                                    cfgs.append({
+                                        "BLOCK_M": BLOCK_M,
+                                        "BLOCK_N": BLOCK_N,
+                                        "BLOCK_K": BLOCK_K,
+                                        "GROUP_M": GROUP_M,
+                                        "num_warps": num_warps,
+                                        "num_stages": num_stages,
+                                        "waves_per_eu": waves_per_eu,
+                                        "matrix_instr_nonkdim": matrix_instr_nonkdim,
+                                    })
     return cfgs
 
 
