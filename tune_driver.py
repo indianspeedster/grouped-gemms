@@ -17,9 +17,13 @@ import sys
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
-REPO = "/it-share/shekhar/grouped-gemms"
-VENV_PY = "/it-share/shekhar/mxfp8/.venv/bin/python"
-OUT_DIR = "/tmp/tune_results"
+REPO = os.environ.get("GROUPED_GEMMS_REPO", "/it-share/shekhar/grouped-gemms")
+# Default to the host venv when running on the host; inside a container the
+# caller (or just sys.executable) decides the interpreter.
+VENV_PY = os.environ.get("VENV_PY", "/it-share/shekhar/mxfp8/.venv/bin/python")
+if not os.path.exists(VENV_PY):
+    VENV_PY = sys.executable
+OUT_DIR = os.environ.get("TUNE_OUT_DIR", "/tmp/tune_results")
 
 SHAPES = [
     (e, m, n, k)

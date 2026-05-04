@@ -103,6 +103,7 @@ if _rocm_mxfp8_available:
         EVEN_K: tl.constexpr,
         MASK_K_LIMIT: tl.constexpr,
         W_CACHE_MODIFIER: tl.constexpr,
+        X_EVICT_POLICY: tl.constexpr,
         UPCAST_INDICES: tl.constexpr = False,
     ):
         MX_PACK_DIVISOR: tl.constexpr = 32
@@ -209,12 +210,13 @@ if _rocm_mxfp8_available:
 
         acc = tl.zeros((BLOCK_M, BLOCK_N), dtype=tl.float32)
         for _ in range(num_k_iter):
-            x = tl.load(XPtrs)
+            x = tl.load(XPtrs, eviction_policy=X_EVICT_POLICY)
             w = tl.load(WPtrs, cache_modifier=W_CACHE_MODIFIER)
             if SWIZZLE_MX_SCALE == "CDNA4_SCALE":
                 if SCALE_NONKDIM == 32:
                     x_scales = _unswizzle_mx_scale_cdna4_nonkdim32(
-                        tl.load(XMxScalePtrs), BLOCK_M, MX_SCALE_BLOCK_K,
+                        tl.load(XMxScalePtrs, eviction_policy=X_EVICT_POLICY),
+                        BLOCK_M, MX_SCALE_BLOCK_K,
                     )
                     w_scales = _unswizzle_mx_scale_cdna4_nonkdim32(
                         tl.load(WMxScalePtrs, cache_modifier=W_CACHE_MODIFIER),
@@ -222,14 +224,15 @@ if _rocm_mxfp8_available:
                     )
                 else:
                     x_scales = _unswizzle_mx_scale_cdna4(
-                        tl.load(XMxScalePtrs), BLOCK_M, MX_SCALE_BLOCK_K,
+                        tl.load(XMxScalePtrs, eviction_policy=X_EVICT_POLICY),
+                        BLOCK_M, MX_SCALE_BLOCK_K,
                     )
                     w_scales = _unswizzle_mx_scale_cdna4(
                         tl.load(WMxScalePtrs, cache_modifier=W_CACHE_MODIFIER),
                         BLOCK_N, MX_SCALE_BLOCK_K,
                     )
             else:
-                x_scales = tl.load(XMxScalePtrs)
+                x_scales = tl.load(XMxScalePtrs, eviction_policy=X_EVICT_POLICY)
                 w_scales = tl.load(WMxScalePtrs)
 
             acc = tl.dot_scaled(
@@ -401,42 +404,42 @@ if _rocm_mxfp8_available:
     # the swept median runtime. nk32 wins 27/36 shapes (5-9% on K=2048,
     # 1-3% elsewhere); nk16 wins remaining 9 shapes (mostly large-N+K).
     _BEST_CFGS = {
-        (1, 2048, 2048): dict(BLOCK_M=128, BLOCK_N=128, BLOCK_K=128, GROUP_M=8, num_warps=4, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32),  # 99.4us
+        (1, 2048, 2048): dict(BLOCK_M=128, BLOCK_N=128, BLOCK_K=128, GROUP_M=16, num_warps=4, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32, x_evict_policy="evict_first", xcd_swizzle=4),  # 99.3us  (GM=16,XCD=4 +9.20%)
         (1, 2048, 5120): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32),  # 236.4us
         (1, 2048, 8192): dict(BLOCK_M=128, BLOCK_N=256, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=2, matrix_instr_nonkdim=32),  # 361.3us
         (1, 5120, 2048): dict(BLOCK_M=128, BLOCK_N=128, BLOCK_K=128, GROUP_M=8, num_warps=4, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32),  # 218.7us
-        (1, 5120, 5120): dict(BLOCK_M=128, BLOCK_N=256, BLOCK_K=256, GROUP_M=4, num_warps=8, num_stages=2, waves_per_eu=2, matrix_instr_nonkdim=32),  # 496.1us
+        (1, 5120, 5120): dict(BLOCK_M=128, BLOCK_N=256, BLOCK_K=256, GROUP_M=4, num_warps=8, num_stages=2, waves_per_eu=2, matrix_instr_nonkdim=32, x_evict_policy="evict_first"),  # 498.2us  (X-evict +0.73%)
         (1, 5120, 8192): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=16),  # 777.2us
         (1, 8192, 2048): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=4, num_warps=8, num_stages=2, waves_per_eu=2, matrix_instr_nonkdim=32),  # 339.1us
         (1, 8192, 5120): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=2, matrix_instr_nonkdim=32),  # 766.4us
         (1, 8192, 8192): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=16),  # 1168.9us
-        (2, 2048, 2048): dict(BLOCK_M=128, BLOCK_N=128, BLOCK_K=128, GROUP_M=8, num_warps=4, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32),  # 97.4us
-        (2, 2048, 5120): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=2, matrix_instr_nonkdim=32),  # 238.0us
-        (2, 2048, 8192): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32),  # 377.6us
-        (2, 5120, 2048): dict(BLOCK_M=128, BLOCK_N=128, BLOCK_K=128, GROUP_M=4, num_warps=4, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32),  # 221.3us
+        (2, 2048, 2048): dict(BLOCK_M=128, BLOCK_N=128, BLOCK_K=128, GROUP_M=8, num_warps=4, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32, x_evict_policy="evict_first"),  # 100.0us  (X-evict +0.76%)
+        (2, 2048, 5120): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=2, matrix_instr_nonkdim=32, x_evict_policy="evict_first"),  # 239.9us  (X-evict +0.63%)
+        (2, 2048, 8192): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32, w_cache_modifier=".cg"),  # 372.2us  (.cg +0.90%)
+        (2, 5120, 2048): dict(BLOCK_M=128, BLOCK_N=128, BLOCK_K=128, GROUP_M=8, num_warps=4, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32),  # 216.6us  (GM=8 +1.51%)
         (2, 5120, 5120): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=2, matrix_instr_nonkdim=32),  # 509.2us
         (2, 5120, 8192): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=16),  # 783.0us
-        (2, 8192, 2048): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=4, num_warps=8, num_stages=2, waves_per_eu=2, matrix_instr_nonkdim=32),  # 347.5us
+        (2, 8192, 2048): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=4, num_warps=8, num_stages=2, waves_per_eu=2, matrix_instr_nonkdim=32, x_evict_policy="evict_first"),  # 347.5us  (X-evict +0.69%)
         (2, 8192, 5120): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=2, matrix_instr_nonkdim=32),  # 775.0us
-        (2, 8192, 8192): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=2, matrix_instr_nonkdim=16),  # 1180.6us
+        (2, 8192, 8192): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=2, matrix_instr_nonkdim=16, x_evict_policy="evict_first"),  # 1178.7us  (X-evict +0.56%)
         (4, 2048, 2048): dict(BLOCK_M=128, BLOCK_N=128, BLOCK_K=128, GROUP_M=8, num_warps=4, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32),  # 99.8us
         (4, 2048, 5120): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32),  # 244.9us
         (4, 2048, 8192): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32),  # 375.6us
-        (4, 5120, 2048): dict(BLOCK_M=128, BLOCK_N=128, BLOCK_K=128, GROUP_M=8, num_warps=4, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32),  # 235.8us
-        (4, 5120, 5120): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=2, matrix_instr_nonkdim=32),  # 520.8us
+        (4, 5120, 2048): dict(BLOCK_M=128, BLOCK_N=128, BLOCK_K=128, GROUP_M=4, num_warps=4, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32),  # 226.4us  (GM=4 +0.96%)
+        (4, 5120, 5120): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=2, matrix_instr_nonkdim=32, x_evict_policy="evict_first"),  # 510.7us  (X-evict +1.20%)
         (4, 5120, 8192): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=2, matrix_instr_nonkdim=16),  # 795.2us
         (4, 8192, 2048): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=4, num_warps=8, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32),  # 355.8us
         (4, 8192, 5120): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32),  # 789.4us
         (4, 8192, 8192): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=2, matrix_instr_nonkdim=16),  # 1199.9us
-        (8, 2048, 2048): dict(BLOCK_M=128, BLOCK_N=128, BLOCK_K=128, GROUP_M=8, num_warps=4, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32),  # 110.8us
-        (8, 2048, 5120): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32),  # 250.8us
-        (8, 2048, 8192): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=2, matrix_instr_nonkdim=32),  # 380.2us
+        (8, 2048, 2048): dict(BLOCK_M=128, BLOCK_N=128, BLOCK_K=128, GROUP_M=8, num_warps=4, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32, x_evict_policy="evict_first"),  # 108.7us  (X-evict +1.13%)
+        (8, 2048, 5120): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32, w_cache_modifier=".cg"),  # 242.8us  (.cg +4.19%)
+        (8, 2048, 8192): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=2, matrix_instr_nonkdim=32, w_cache_modifier=".cg"),  # 378.8us  (.cg +1.63%)
         (8, 5120, 2048): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32),  # 244.3us
         (8, 5120, 5120): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=2, matrix_instr_nonkdim=32),  # 529.6us
-        (8, 5120, 8192): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=16),  # 813.4us
-        (8, 8192, 2048): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=2, matrix_instr_nonkdim=32),  # 370.9us
-        (8, 8192, 5120): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=2, matrix_instr_nonkdim=16),  # 816.2us
-        (8, 8192, 8192): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=4, num_warps=8, num_stages=2, waves_per_eu=2, matrix_instr_nonkdim=16),  # 1288.5us
+        (8, 5120, 8192): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=16, x_evict_policy="evict_first"),  # 815.9us  (X-evict +0.59%)
+        (8, 8192, 2048): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=4, num_warps=8, num_stages=2, waves_per_eu=2, matrix_instr_nonkdim=32, w_cache_modifier=".cg", x_evict_policy="evict_first"),  # 363.8us  (GM=4 +1.60% on top of .cg+evict)
+        (8, 8192, 5120): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=2, matrix_instr_nonkdim=16, x_evict_policy="evict_first"),  # 840.6us  (X-evict +0.71%)
+        (8, 8192, 8192): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=4, num_warps=8, num_stages=2, waves_per_eu=2, matrix_instr_nonkdim=16, x_evict_policy="evict_first"),  # 1248.9us  (X-evict +0.66%)
     }
 
     # Heuristic for shapes outside the swept grid. The sweep showed BLOCK_N=128
@@ -468,12 +471,16 @@ if _rocm_mxfp8_available:
         BLOCK_N: int = None,
         BLOCK_K: int = None,
         GROUP_M: int = None,
-        XCD_SWIZZLE: int = 8,
+        XCD_SWIZZLE: int = None,
         num_warps: int = None,
         num_stages: int = None,
         matrix_instr_nonkdim: int = None,
         waves_per_eu: int = None,
         kpack: int = 1,
+        # Cache hints. None / "" means "consult _BEST_CFGS first, otherwise
+        # use kernel default of None / no eviction policy".
+        w_cache_modifier: str = None,
+        x_evict_policy: str = None,
     ) -> torch.Tensor:
         """MXFP8 grouped GEMM: ``output[g] = input_act[group_g] @ weight[g]^T``.
 
@@ -504,6 +511,14 @@ if _rocm_mxfp8_available:
         # in _BEST_CFGS may override via "matrix_instr_nonkdim".
         if matrix_instr_nonkdim is None:
             matrix_instr_nonkdim = _cfg.get("matrix_instr_nonkdim", 16)
+        # Cache hints — looked up per-shape; defaults are conservative
+        # (let the runtime decide).
+        if w_cache_modifier is None:
+            w_cache_modifier = _cfg.get("w_cache_modifier", None)
+        if x_evict_policy is None:
+            x_evict_policy = _cfg.get("x_evict_policy", "")
+        if XCD_SWIZZLE is None:
+            XCD_SWIZZLE = _cfg.get("xcd_swizzle", 8)
 
         # CDNA4_SCALE path: pre-shuffle W and X scales into the layout that
         # v_mfma_scale_f32_16x16x128_f8f6f4 consumes natively, so the kernel
@@ -581,7 +596,8 @@ if _rocm_mxfp8_available:
             SWIZZLE_MX_SCALE=swizzle_mx_scale,
             SCALE_NONKDIM=nonkdim,
             EVEN_K=(K % BLOCK_K == 0), MASK_K_LIMIT=(K % BLOCK_K),
-            W_CACHE_MODIFIER=None,
+            W_CACHE_MODIFIER=w_cache_modifier,
+            X_EVICT_POLICY=x_evict_policy,
             UPCAST_INDICES=False,
             num_warps=num_warps, num_stages=num_stages,
             matrix_instr_nonkdim=nonkdim, kpack=kpack,
