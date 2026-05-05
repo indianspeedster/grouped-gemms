@@ -192,11 +192,13 @@ def print_results(experiments: List[Experiment]):
     ]
     rows = []
     import math
-    geo = {"mxfp8": 0.0, "rowwise": 0.0, "tensorwise": 0.0}
+    geo_x = {"mxfp8": 0.0, "rowwise": 0.0, "tensorwise": 0.0}
+    geo_tflops = {"bf16": 0.0, "mxfp8": 0.0, "rowwise": 0.0, "tensorwise": 0.0}
     geo_n = 0
     for exp in experiments:
         m, n, k = exp.config.m, exp.config.n, exp.config.k
         flops = 2 * m * n * k
+        bf16_tflops = (flops / 1e12) / (exp.result.bf16_us / 1e6)
         mxfp8_tflops = (flops / 1e12) / (exp.result.mxfp8_us / 1e6)
         rowwise_tflops = (flops / 1e12) / (exp.result.rowwise_us / 1e6)
         tensorwise_tflops = (flops / 1e12) / (exp.result.tensorwise_us / 1e6)
@@ -204,9 +206,13 @@ def print_results(experiments: List[Experiment]):
         rowwise_x = exp.result.bf16_us / exp.result.rowwise_us
         tensorwise_x = exp.result.bf16_us / exp.result.tensorwise_us
         if all(s > 0 and s != float("inf") for s in (mxfp8_x, rowwise_x, tensorwise_x)):
-            geo["mxfp8"] += math.log(mxfp8_x)
-            geo["rowwise"] += math.log(rowwise_x)
-            geo["tensorwise"] += math.log(tensorwise_x)
+            geo_x["mxfp8"] += math.log(mxfp8_x)
+            geo_x["rowwise"] += math.log(rowwise_x)
+            geo_x["tensorwise"] += math.log(tensorwise_x)
+            geo_tflops["bf16"] += math.log(bf16_tflops)
+            geo_tflops["mxfp8"] += math.log(mxfp8_tflops)
+            geo_tflops["rowwise"] += math.log(rowwise_tflops)
+            geo_tflops["tensorwise"] += math.log(tensorwise_tflops)
             geo_n += 1
         rows.append([
             exp.config.e, m, n, k,
@@ -221,9 +227,16 @@ def print_results(experiments: List[Experiment]):
     if geo_n:
         print(
             f"\nGeomean speedup vs bf16 ({geo_n} shapes): "
-            f"MXFP8={math.exp(geo['mxfp8']/geo_n):.3f}x  "
-            f"rowwise={math.exp(geo['rowwise']/geo_n):.3f}x  "
-            f"tensorwise={math.exp(geo['tensorwise']/geo_n):.3f}x"
+            f"MXFP8={math.exp(geo_x['mxfp8']/geo_n):.3f}x  "
+            f"rowwise={math.exp(geo_x['rowwise']/geo_n):.3f}x  "
+            f"tensorwise={math.exp(geo_x['tensorwise']/geo_n):.3f}x"
+        )
+        print(
+            f"Geomean TFLOPS ({geo_n} shapes): "
+            f"bf16={math.exp(geo_tflops['bf16']/geo_n):.1f}  "
+            f"MXFP8={math.exp(geo_tflops['mxfp8']/geo_n):.1f}  "
+            f"rowwise={math.exp(geo_tflops['rowwise']/geo_n):.1f}  "
+            f"tensorwise={math.exp(geo_tflops['tensorwise']/geo_n):.1f}"
         )
 
 
