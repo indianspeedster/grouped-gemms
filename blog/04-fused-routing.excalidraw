@@ -1435,13 +1435,13 @@
       "updated": 1,
       "link": null,
       "locked": false,
-      "text": "\u2248 2\u20133 \u00b5s \u00b7 one launch \u00b7 no sync\n+1.33\u00d7 / +1.34\u00d7 on the two\n2048\u00d72048 shapes",
+      "text": "\u2248 2\u20133 \u00b5s \u00b7 one launch \u00b7 no sync\n+14% TF geomean; up to +35% TF\non small 2048\u00d72048 shapes",
       "fontSize": 15,
       "fontFamily": 1,
       "textAlign": "center",
       "verticalAlign": "middle",
       "containerId": null,
-      "originalText": "\u2248 2\u20133 \u00b5s \u00b7 one launch \u00b7 no sync\n+1.33\u00d7 / +1.34\u00d7 on the two\n2048\u00d72048 shapes",
+      "originalText": "\u2248 2\u20133 \u00b5s \u00b7 one launch \u00b7 no sync\n+14% TF geomean; up to +35% TF\non small 2048\u00d72048 shapes",
       "lineHeight": 1.25,
       "baseline": 15
     }

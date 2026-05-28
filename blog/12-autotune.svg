@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1068" height="562" viewBox="16.0 -4.0 1068.0 562.0" font-family="Segoe UI, Helvetica, Arial, sans-serif">
 <rect x="16.0" y="-4.0" width="1068.0" height="562.0" fill="#ffffff"/>
-<text x="40.0" y="43.0" font-size="28" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#c41e3a" text-anchor="start">L5 — Per-shape autotuning  (→ 1.61×)</text>
+<text x="40.0" y="43.0" font-size="28" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#c41e3a" text-anchor="start">L5 — Per-shape autotuning  (→ 1585 TFLOPS)</text>
 <text x="40.0" y="71.5" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">576 configs × 36 shapes, one shape per GPU across 8 MI355X. Frozen into _BEST_CFGS, looked up at launch.</text>
 <rect x="60.0" y="120.0" width="250.0" height="32.0" rx="12" fill="#d0bfff" stroke="#1e1e1e" stroke-width="2"/>
 <text x="185.0" y="138.3" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">BLOCK_M ∈ {64,128,256}</text>
@@ -55,6 +55,6 @@
 <text x="290.0" y="496.4" font-size="13" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">Fixes the L2 tile mismatch: small shapes get small tiles,</text>
 <text x="290.0" y="512.7" font-size="13" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">large get 256/256 + nk32 — best of both.</text>
 <rect x="560.0" y="470.0" width="500.0" height="64.0" rx="12" fill="#b2f2bb" stroke="#2f9e44" stroke-width="2"/>
-<text x="810.0" y="496.0" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">Representative geomean 1.50× → 1.61× vs bf16.</text>
-<text x="810.0" y="513.5" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">Full 36-shape production geomean ≈ 1.49× (see bench.py).</text>
+<text x="810.0" y="496.0" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">Representative geomean 1473 → 1585 TFLOPS</text>
+<text x="810.0" y="513.5" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">(1.61× → 1.74× the naive throughput).</text>
 </svg>

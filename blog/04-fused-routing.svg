@@ -57,6 +57,6 @@
 <text x="480.0" y="491.5" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">ExptData (packed map →)</text>
 <rect x="650.0" y="375.0" width="380.0" height="90.0" rx="12" fill="#ffec99" stroke="#e8590c" stroke-width="2"/>
 <text x="840.0" y="404.2" font-size="15" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">≈ 2–3 µs · one launch · no sync</text>
-<text x="840.0" y="422.9" font-size="15" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">+1.33× / +1.34× on the two</text>
-<text x="840.0" y="441.7" font-size="15" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">2048×2048 shapes</text>
+<text x="840.0" y="422.9" font-size="15" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">+14% TF geomean; up to +35% TF</text>
+<text x="840.0" y="441.7" font-size="15" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">on small 2048×2048 shapes</text>
 </svg>

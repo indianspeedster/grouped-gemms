@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1088" height="478" viewBox="16.0 -4.0 1088.0 478.0" font-family="Segoe UI, Helvetica, Arial, sans-serif">
 <rect x="16.0" y="-4.0" width="1088.0" height="478.0" fill="#ffffff"/>
 <text x="40.0" y="43.0" font-size="28" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#c41e3a" text-anchor="start">L4 — CDNA4-native scale layout  (the big AMD win)</text>
-<text x="40.0" y="71.5" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">Feed v_mfma_scale_f32_16x16x128 its scales pre-shuffled → kill the per-K-iter permute chain. 0.97× → 1.50×.</text>
+<text x="40.0" y="71.5" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">Feed v_mfma_scale_f32_16x16x128 its scales pre-shuffled → kill the per-K-iter permute chain. 993 → 1473 TF (+48%).</text>
 <text x="60.0" y="122.3" font-size="15" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#c41e3a" text-anchor="start">BEFORE · #blocked → #linear1 lowering (every K iteration)</text>
 <rect x="60.0" y="145.0" width="180.0" height="48.0" rx="12" fill="#ffffff" stroke="#1e1e1e" stroke-width="2"/>
 <text x="150.0" y="163.8" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">scales (M, K/32)</text>

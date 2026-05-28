@@ -1,4 +1,4 @@
-# From 0.93× to 1.61×: Building an MXFP8 Grouped GEMM on AMD MI355X
+# From 914 to 1585 TFLOPS: Building an MXFP8 Grouped GEMM on AMD MI355X
 
 *A standalone Triton kernel for the Llama4 MoE forward (and dgrad) pass on
 gfx950 / CDNA4 — built from a naive baseline, then optimized one measurable rung
@@ -8,28 +8,32 @@ at a time.*
 
 ## TL;DR
 
-We start with a **correct but naive** MXFP8 grouped GEMM and find it's actually
-**slower than bf16** (0.93× geomean). Then we climb a ladder of optimizations,
-measuring each step on an MI355X, and land at **1.61× over bf16** on a
-representative set of Llama4 shapes (peak ~1910 TFLOPS), holding **27.6 dB
-SQNR** the whole way.
+We start with a **correct but naive** MXFP8 grouped GEMM that sustains only
+**914 TFLOPS**, then climb a ladder of optimizations, measuring throughput at
+each step on an MI355X. We end at **1585 TFLOPS geomean — 1.74× the naive
+kernel** — on a representative set of Llama4 shapes (peak ~1910 TFLOPS), holding
+**27.6 dB SQNR** the whole way.
 
 The single dominant win is AMD-specific: a **CDNA4-native scale layout** that
 removes a per-K-iteration address-shuffle the compiler would otherwise emit on
-the MFMA scale loads. It alone moves the geomean from 0.97× to 1.50×.
+the MFMA scale loads. That one rung is worth **+48% throughput** (993 → 1473
+TFLOPS).
 
 Every number below is reproducible: `blog/ladder.py` is one parameterized kernel
 with a `rung` knob (0–5), and `blog/bench_ladder.py` runs the sweep one-shape-
 per-GPU and writes `blog/ladder_results.json`.
 
-| Rung | What it adds | Geomean vs bf16 |
-|---|---|---:|
-| L0 | naive baseline | 0.93× |
-| L1 | + sync-free routing | 1.06× |
-| L2 | + bigger tiles & pipeline | 0.97× |
-| L3 | + GROUP_M / XCD scheduling | 1.01× |
-| **L4** | **+ CDNA4-native scale layout** | **1.50×** |
-| L5 | + per-shape autotuning | **1.61×** |
+| Rung | What it adds | Geomean TFLOPS | × naive |
+|---|---|--:|--:|
+| L0 | naive baseline | 914 | 1.00× |
+| L1 | + sync-free routing | 1040 | 1.14× |
+| L2 | + bigger tiles & pipeline | 954 | 1.04× |
+| L3 | + GROUP_M / XCD scheduling | 993 | 1.09× |
+| **L4** | **+ CDNA4-native scale layout** | **1473** | **1.61×** |
+| L5 | + per-shape autotuning | **1585** | **1.74×** |
+
+(Throughput is `2·M·N·K / time`; since FLOPs are fixed per shape, the `× naive`
+column is just the runtime improvement.)
 
 > Diagrams are SVGs rendered from editable Excalidraw scenes
 > (`blog/NN-*.excalidraw`); regenerate with `python blog/gen_diagrams.py`.
@@ -117,13 +121,13 @@ scales as a *native operand*. Two things then matter enormously:
 2. **The 8-XCD topology.** An MI355X is eight accelerator complex dies, each with
    its own L2 slice. Scheduling that ignores XCD boundaries throws away locality.
 
-The rest of the post builds a kernel that gets both right. We'll measure each
-step against the same bf16 baseline (`torch._grouped_mm`) on six representative
-Llama4 shapes spanning the regimes (small/large K, 1–8 experts).
+The rest of the post builds a kernel that gets both right. We measure each step
+by its sustained **MXFP8 throughput (TFLOPS)** on six representative Llama4
+shapes spanning the regimes (small/large K, 1–8 experts).
 
 ---
 
-## 5. The naive baseline (L0) — 0.93×
+## 5. The naive baseline (L0) — 914 TFLOPS
 
 ![03-naive-kernel.svg](03-naive-kernel.svg)
 
@@ -134,14 +138,14 @@ The naive kernel is *correct* and does the obvious thing:
 - plain row-major scales (re-shuffled inside the kernel by the lowering),
 - a small `64×128` tile, single-stage (no software pipelining).
 
-Measured geomean across the six shapes: **0.93× bf16** — MXFP8 is *losing* to
-bf16. The MFMA units are starved: tiny tiles give poor arithmetic intensity, and
-the scale-load shuffle eats the inner loop. Every design choice above is a rung
-to climb.
+Measured geomean: **914 TFLOPS** — for reference that's *below* the bf16 baseline
+on most shapes. The MFMA units are starved: tiny tiles give poor arithmetic
+intensity, and the scale-load shuffle eats the inner loop. Every design choice
+above is a rung to climb.
 
 ---
 
-## 6. L1 — Sync-free routing (+14% vs naive)
+## 6. L1 — Sync-free routing (914 → 1040 TFLOPS, +14%)
 
 ![04-fused-routing.svg](04-fused-routing.svg)
 
@@ -166,9 +170,9 @@ block_id = expt_data >> 16
 ```
 
 No binary search, no per-tile expert scan in the hot path. The win is largest
-where the kernel is short and the fixed routing cost dominates: **+33%** on
-`(8, 2048, 2048)` and **+34%** on `(1, 2048, 2048)`; on big shapes it's amortized
-to ~2%. Geomean: **0.93× → 1.06×**.
+where the kernel is short and the fixed routing cost dominates: `(8, 2048, 2048)`
+goes **713 → 946 TFLOPS (+33%)** and `(1, 2048, 2048)` **752 → 1012 TFLOPS
+(+35%)**; on big shapes it's amortized to ~2%.
 
 ---
 
@@ -180,16 +184,17 @@ Bumping to `256×128×256` tiles with `num_stages=2` gives each program much mor
 MFMA work and lets the loads of the next K-tile overlap the current MFMA.
 
 On compute-bound large shapes this helps: `(1, 8192, 8192)` goes
-1022 → 1189 TFLOPS (+16%). But on small shapes the same fixed tile *hurts* —
-`(8, 2048, 2048)` drops 946 → 753 TFLOPS (−20%), because a 256-row tile is mostly
-wasted on a short expert. Net geomean actually dips: **1.06× → 0.97×**.
+**1046 → 1189 TFLOPS (+14%)**. But on small shapes the same fixed tile *hurts* —
+`(8, 2048, 2048)` drops **946 → 753 TFLOPS (−20%)**, because a 256-row tile is
+mostly wasted on a short expert. The geomean actually slips: **1040 → 954
+TFLOPS**.
 
 This is the honest lesson of the ladder: **no single config wins everywhere.**
 That tension is exactly what L5 (autotuning) resolves.
 
 ---
 
-## 8. L3 — GROUP_M + XCD scheduling
+## 8. L3 — GROUP_M + XCD scheduling (954 → 993 TFLOPS)
 
 ![07-group-m.svg](07-group-m.svg)
 
@@ -206,13 +211,13 @@ range, keeping the reuse inside one L2.
 
 This trio is adapted from AMD aiter's `moe_op_gemm_a8w8` (itself from
 triton-lang's `matmul_ogs`). On these large, already compute-bound shapes the
-locality is mostly amortized, so L3 is modest: geomean **0.97× → 1.01×**. (It's a
+locality is mostly amortized, so L3 is modest: **954 → 993 TFLOPS**. (It's a
 bigger deal on small/many-expert shapes, and — notably — it *regresses* the wgrad
 kernel, which is operand-latency-bound, so we don't use it there.)
 
 ---
 
-## 9. L4 — CDNA4-native scale layout (the big win): 1.01× → 1.50×
+## 9. L4 — CDNA4-native scale layout (the big win): 993 → 1473 TFLOPS
 
 ![09-cdna4-scales.svg](09-cdna4-scales.svg)
 
@@ -226,9 +231,9 @@ in-kernel `_unswizzle_*_cdna4` then becomes a pure `tl.reshape`/`tl.permute` on
 registers that the compiler folds away — we confirmed **`v_perm_b32` count = 0**
 in the AMDGCN.
 
-The effect is dramatic and universal: geomean **1.01× → 1.50×**, e.g.
-`(1, 8192, 8192)` jumps 1132 → 1910 TFLOPS. This is the rung that makes MXFP8
-worth it on CDNA4.
+The effect is dramatic and universal: **+48% throughput**, 993 → 1473 TFLOPS
+geomean, e.g. `(1, 8192, 8192)` jumps **1132 → 1910 TFLOPS**. This is the rung
+that makes MXFP8 worth it on CDNA4.
 
 A couple of details:
 - **Gate:** needs `BLOCK_K ≥ 256 & K%256==0 & N%32==0 & M%32==0` — which is why
@@ -248,14 +253,14 @@ branch-free.
 
 ![11-ladder-results.svg](11-ladder-results.svg)
 
-Plotting the cumulative geomean makes the story obvious: routing is a cheap
-universal win, tiles/scheduling are a wash at a *fixed* config, and the CDNA4
-scale layout is the dominant lever. One thing remains — recovering the
-per-shape config loss we saw at L2.
+Plotting the cumulative geomean throughput makes the story obvious: routing is a
+cheap win, tiles/scheduling are a wash at a *fixed* config, and the CDNA4 scale
+layout is the dominant lever. One thing remains — recovering the per-shape config
+loss we saw at L2.
 
 ---
 
-## 11. L5 — Per-shape autotuning → 1.61×
+## 11. L5 — Per-shape autotuning → 1585 TFLOPS
 
 ![12-autotune.svg](12-autotune.svg)
 
@@ -274,54 +279,55 @@ consulted at launch by `_pick_config`, with a small/large-K fallback for unseen
 shapes, plus a few per-shape cache hints (`evict_first` on X, `.cg` on W).
 
 This fixes the L2 mismatch — small shapes get small tiles, large shapes get
-`256/256` + nk32 — and lifts the representative geomean **1.50× → 1.61×**.
+`256/256` + nk32 — and lifts the geomean **1473 → 1585 TFLOPS** (1.74× the naive
+kernel).
 
 ---
 
-## 12. Per-shape results
+## 12. Per-shape throughput (TFLOPS at each rung)
 
-Speedup vs bf16 at each rung (MI355X, M=16640):
+MI355X, M=16640:
 
-| E · N · K | L0 | L1 | L2 | L3 | L4 | L5 | L5 TFLOPS |
-|---|--:|--:|--:|--:|--:|--:|--:|
-| 8 · 2048 · 2048 | 1.42 | 1.88 | 1.50 | 1.64 | 2.17 | **2.52** | 1267 |
-| 1 · 2048 · 2048 | 0.83 | 1.12 | 0.88 | 1.06 | 1.28 | **1.58** | 1421 |
-| 2 · 8192 · 2048 | 0.95 | 1.04 | 0.86 | 0.92 | 1.28 | **1.37** | 1567 |
-| 4 · 5120 · 5120 | 0.83 | 0.87 | 0.87 | 0.84 | 1.41 | **1.44** | 1704 |
-| 8 · 5120 · 8192 | 0.93 | 0.96 | 0.98 | 0.96 | 1.62 | **1.62** | 1727 |
-| 1 · 8192 · 8192 | 0.75 | 0.77 | 0.87 | 0.83 | 1.40 | **1.40** | 1911 |
-| **geomean** | **0.93** | **1.06** | **0.97** | **1.01** | **1.50** | **1.61** | |
+| E · N · K | L0 | L1 | L2 | L3 | L4 | **L5** |
+|---|--:|--:|--:|--:|--:|--:|
+| 8 · 2048 · 2048 | 713 | 946 | 753 | 826 | 1092 | **1267** |
+| 1 · 2048 · 2048 | 752 | 1012 | 795 | 952 | 1152 | **1421** |
+| 2 · 8192 · 2048 | 1091 | 1189 | 983 | 1049 | 1472 | **1567** |
+| 4 · 5120 · 5120 | 981 | 1036 | 1031 | 1002 | 1668 | **1704** |
+| 8 · 5120 · 8192 | 992 | 1027 | 1047 | 1026 | 1730 | **1727** |
+| 1 · 8192 · 8192 | 1022 | 1046 | 1189 | 1132 | 1910 | **1911** |
+| **geomean** | **914** | **1040** | **954** | **993** | **1473** | **1585** |
 
 SQNR is 27.6 dB at every rung and every shape — the optimizations are pure
 scheduling/layout, never accuracy trades.
 
-> This is a 6-shape representative subset chosen to span the regimes. The full
-> 36-shape production geomean (in `bench.py`) is ≈**1.49×**; the subset reads a
-> bit higher because it includes the small-K shapes where MXFP8 wins biggest.
+> Six-shape representative subset chosen to span the regimes. As a sanity check
+> against bf16, the full 36-shape production geomean speedup (in `bench.py`) is
+> ≈ **1.49× over `torch._grouped_mm`** at ~1591 geomean TFLOPS.
 
 ---
 
 ## 13. Takeaways
 
-- **Naive MXFP8 loses to bf16** on CDNA4 — the format only pays off after the
-  hardware-specific work.
-- **One optimization dominates**: the CDNA4-native scale layout (≈ +49% geomean).
+- **The CDNA4-native scale layout dominates** — +48% throughput in one rung.
   Everything else is single-digit to low-double-digit percent.
-- **Fixed configs can't win everywhere** — the L2 regression is real, and the
-  reason per-shape autotuning exists.
-- **Routing overhead is shape-sensitive**: huge for small/many-expert kernels,
-  invisible for large ones.
+- **Fixed configs can't win everywhere** — the L2 throughput regression is real,
+  and the reason per-shape autotuning exists.
+- **Routing overhead is shape-sensitive**: +33–35% TFLOPS for small/many-expert
+  kernels, ~2% for large ones.
+- **Order matters**: the scale layout needs `BLOCK_K ≥ 256`, so the big-tile rung
+  must land first to unlock it.
 
 ### What didn't help (bounding the ceiling)
 
 | Lever | Result | Why |
 |---|---|---|
-| `num_stages=3` on K=2048 | −7% | K-loop too short; fill/drain + LDS occupancy cost |
-| `N,K` as `tl.constexpr` | −25% | worse codegen with literal large ints |
+| `num_stages=3` on K=2048 | −7% TF | K-loop too short; fill/drain + LDS occupancy cost |
+| `N,K` as `tl.constexpr` | −25% TF | worse codegen with literal large ints |
 | `kpack=2` | no-op | Triton-AMD forces 1 on gfx950 |
-| XCD/GROUP_M ported to wgrad | −50% | wgrad is operand-latency-bound, not schedule-bound |
+| XCD/GROUP_M ported to wgrad | −50% TF | wgrad is operand-latency-bound, not schedule-bound |
 
-The remaining ~5% gap to hipBLASLt's rowwise/tensorwise FP8 is the per-32-block
+The remaining headroom to hipBLASLt's rowwise/tensorwise FP8 is the per-32-block
 scale-load cost in the inner loop plus an `s_waitcnt` conservatism in our Triton
 build. Next: cherry-pick the token-aware wait-count fix, and a raw-intrinsic
 (FlyDSL) path for the long-term ceiling.
@@ -335,7 +341,7 @@ source /it-share/shekhar/mxfp8/.venv/bin/activate
 cd /it-share/shekhar/grouped-gemms
 
 python test_correctness.py        # SQNR vs torch._grouped_mm, 27 dB threshold
-python bench.py                   # full 36-shape Llama4 sweep + geomean
+python bench.py                   # full 36-shape Llama4 sweep + geomean TFLOPS
 
 python blog/bench_ladder.py       # the naive→optimized ladder (this post)
 python blog/gen_diagrams.py       # regenerate the diagrams

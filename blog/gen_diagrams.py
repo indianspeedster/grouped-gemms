@@ -315,7 +315,7 @@ def d_grouped():
 def d_naive():
     E = []
     E.append(header("The naive baseline (L0)"))
-    E.append(caption("Correct MXFP8 grouped GEMM, zero AMD tuning. One output tile per program. Measured: 0.93× bf16 — slower.", 40, 60))
+    E.append(caption("Correct MXFP8 grouped GEMM, zero AMD tuning. One output tile per program. Measured: 914 TFLOPS geomean.", 40, 60))
 
     E += box(60, 110, 300, 60, "host torch routing\ncat·diff·cumsum·searchsorted…", bg=LRED, size=13, family=3)
     E += box(60, 195, 300, 50, "GROUP_M=1 · XCD=1\n(row-major tiles)", bg=LRED, size=13, family=3)
@@ -331,7 +331,7 @@ def d_naive():
     E += box(lx + 220, ly + 24, 170, 94, "acc +=\ntl.dot_scaled\n(e4m3 × e4m3)", bg=LGREEN, size=13, family=3)
     E += box(lx + 20, ly + 132, 370, 40, "loop K  →  write acc to out", bg=LGRAY, size=13, family=3)
 
-    E += box(440, 380, 420, 60, "Result: 0.93× bf16 geomean — the scale-load shuffle and\ntiny tiles leave the MFMA units starved.", bg=LYELLOW, stroke=ORANGE, size=14)
+    E += box(440, 380, 420, 60, "Result: 914 TFLOPS geomean — the scale-load shuffle and\ntiny tiles leave the MFMA units starved.", bg=LYELLOW, stroke=ORANGE, size=14)
     E.append(text(60, 430, "Every box on the left is an opportunity. The rest of the post lights them up one rung at a time.", size=13, color=GRAY))
     save("03-naive-kernel.excalidraw", E, "naive kernel")
 
@@ -367,7 +367,7 @@ def d_routing():
     for o in outs:
         E += box(360, oy, 240, 30, o, bg=LBLUE, size=13, family=3)
         oy += 38
-    E += box(650, 375, 380, 90, "≈ 2–3 µs · one launch · no sync\n+1.33× / +1.34× on the two\n2048×2048 shapes", bg=LYELLOW, stroke=ORANGE, size=15)
+    E += box(650, 375, 380, 90, "≈ 2–3 µs · one launch · no sync\n+14% TF geomean; up to +35% TF\non small 2048×2048 shapes", bg=LYELLOW, stroke=ORANGE, size=15)
     save("04-fused-routing.excalidraw", E, "fused routing")
 
 
@@ -489,7 +489,7 @@ def d_xcd():
 def d_cdna4():
     E = []
     E.append(header("L4 — CDNA4-native scale layout  (the big AMD win)"))
-    E.append(caption("Feed v_mfma_scale_f32_16x16x128 its scales pre-shuffled → kill the per-K-iter permute chain. 0.97× → 1.50×.", 40, 60))
+    E.append(caption("Feed v_mfma_scale_f32_16x16x128 its scales pre-shuffled → kill the per-K-iter permute chain. 993 → 1473 TF (+48%).", 40, 60))
 
     E.append(text(60, 110, "BEFORE · #blocked → #linear1 lowering (every K iteration)", size=15, color=RED))
     E += box(60, 145, 180, 48, "scales (M, K/32)\nrow-major", bg=WHITE, size=12, family=3)
@@ -543,36 +543,40 @@ def d_kloop():
 # --- 11  ladder results bar chart --------------------------------------
 def d_ladder():
     E = []
-    E.append(header("The ladder — measured geomean vs bf16"))
-    E.append(caption("6 representative Llama4 shapes on MI355X. Each rung adds one optimization to the previous.", 40, 60))
+    E.append(header("The ladder — measured geomean TFLOPS"))
+    E.append(caption("6 representative Llama4 shapes on MI355X. Each rung adds one optimization; bars show MXFP8 throughput.", 40, 60))
 
     bars = [
-        ("L0\nnaive", 0.93, LRED),
-        ("L1\n+routing", 1.06, LBLUE),
-        ("L2\n+tiles", 0.97, LBLUE),
-        ("L3\n+sched", 1.01, LBLUE),
-        ("L4\n+cdna4\nscales", 1.50, LGREEN),
-        ("L5\n+autotune", 1.61, LGREEN),
+        ("L0\nnaive", 914, LRED),
+        ("L1\n+routing", 1040, LBLUE),
+        ("L2\n+tiles", 954, LBLUE),
+        ("L3\n+sched", 993, LBLUE),
+        ("L4\n+cdna4\nscales", 1473, LGREEN),
+        ("L5\n+autotune", 1585, LGREEN),
     ]
-    base_y = 470; scale = 230; x0 = 120; bw = 120; gap = 40
+    maxtf = 1585.0
+    base_y = 470; scale = 380.0 / maxtf; x0 = 130; bw = 120; gap = 40
+    span = len(bars) * (bw + gap) + 10
     # axes
-    E.append(line(x0 - 30, base_y, [[0, 0], [len(bars) * (bw + gap) + 10, 0]], color=INK))
-    E.append(line(x0 - 30, base_y, [[0, 0], [0, -scale * 1.7 - 10]], color=INK))
-    # bf16 = 1.0 reference line
-    ry = base_y - scale
-    E.append(line(x0 - 30, ry, [[0, 0], [len(bars) * (bw + gap) + 10, 0]], color=RED, dash="dashed"))
-    E.append(label(x0 + len(bars) * (bw + gap) - 30, ry - 14, "bf16 = 1.0×", size=13, color=RED))
+    E.append(line(x0 - 30, base_y, [[0, 0], [span, 0]], color=INK))
+    E.append(line(x0 - 30, base_y, [[0, 0], [0, -400]], color=INK))
+    E.append(label(x0 - 65, base_y - 200, "TFLOPS", size=13, color=GRAY))
+    # naive baseline reference line
+    ry = base_y - bars[0][1] * scale
+    E.append(line(x0 - 30, ry, [[0, 0], [span, 0]], color=RED, dash="dashed"))
+    E.append(label(x0 + span - 80, ry - 13, "naive = 914 TF", size=12, color=RED))
     for i, (name, val, col) in enumerate(bars):
         bx = x0 + i * (bw + gap)
         h = val * scale
         E.append(rect(bx, base_y - h, bw, h, bg=col, sw=1.5))
-        E.append(label(bx + bw / 2, base_y - h - 18, f"{val:.2f}×", size=16, color=INK))
+        E.append(label(bx + bw / 2, base_y - h - 30, f"{val} TF", size=15, color=INK))
+        E.append(label(bx + bw / 2, base_y - h - 12, f"{val/bars[0][1]:.2f}× naive", size=11, color=GRAY))
         E.append(label(bx + bw / 2, base_y + 26, name, size=13))
-    E.append(text(120, 540,
-                  "Naive MXFP8 is slower than bf16. Routing helps small shapes; tiles/scheduling are a wash at fixed config;",
+    E.append(text(130, 540,
+                  "Routing helps small shapes; tiles/scheduling are a wash at a fixed config; the CDNA4 scale layout (L4)",
                   size=13, color=GRAY))
-    E.append(text(120, 562,
-                  "the CDNA4 scale layout (L4) is the dominant win; per-shape autotuning (L5) recovers the fixed-config loss.",
+    E.append(text(130, 562,
+                  "is the dominant win (+48% TF); per-shape autotuning (L5) adds another +8% → 1.74× the naive throughput.",
                   size=13, color=GRAY))
     save("11-ladder-results.excalidraw", E, "ladder results")
 
@@ -580,7 +584,7 @@ def d_ladder():
 # --- 12  per-shape autotune  (L5) --------------------------------------
 def d_autotune():
     E = []
-    E.append(header("L5 — Per-shape autotuning  (→ 1.61×)"))
+    E.append(header("L5 — Per-shape autotuning  (→ 1585 TFLOPS)"))
     E.append(caption("576 configs × 36 shapes, one shape per GPU across 8 MI355X. Frozen into _BEST_CFGS, looked up at launch.", 40, 60))
     space = ["BLOCK_M ∈ {64,128,256}", "BLOCK_N ∈ {128,256}", "BLOCK_K ∈ {128,256}",
              "GROUP_M ∈ {1,4,8}", "num_warps ∈ {4,8}", "num_stages ∈ {1,2}",
@@ -598,7 +602,7 @@ def d_autotune():
     E += box(810, 130, 250, 150, "_BEST_CFGS[(E,N,K)]\n\n36 tuned entries\n+ small/large-K\nfallback\n\n_pick_config()", bg=LGREEN, size=13, family=3)
 
     E += box(60, 470, 460, 64, "Fixes the L2 tile mismatch: small shapes get small tiles,\nlarge get 256/256 + nk32 — best of both.", bg=LYELLOW, stroke=ORANGE, size=13)
-    E += box(560, 470, 500, 64, "Representative geomean 1.50× → 1.61× vs bf16.\nFull 36-shape production geomean ≈ 1.49× (see bench.py).", bg=LGREEN, stroke=GREEN, size=14)
+    E += box(560, 470, 500, 64, "Representative geomean 1473 → 1585 TFLOPS\n(1.61× → 1.74× the naive throughput).", bg=LGREEN, stroke=GREEN, size=14)
     save("12-autotune.excalidraw", E, "per-shape autotune")
 
 
