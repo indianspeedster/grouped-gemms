@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1044" height="519" viewBox="16.0 -4.0 1044.0 519.2" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+<rect x="16.0" y="-4.0" width="1044.0" height="519.2" fill="#ffffff"/>
+<text x="40.0" y="43.0" font-size="28" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#c41e3a" text-anchor="start">Optimization 6 — Direct dot_scaled K-loop + EVEN_K peel</text>
+<text x="40.0" y="81.5" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">Consume e8m0 scales inside MFMA (no dequant pass); peel the ragged tail so the main loop is branch-free.</text>
+<text x="60.0" y="133.1" font-size="16" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1971c2" text-anchor="start">Main loop  ·  num_k_iter (full BLOCK_K tiles)</text>
+<rect x="60.0" y="155.0" width="560.0" height="210.0" rx="12" fill="#f8f9fa" stroke="#1971c2" stroke-width="2"/>
+<rect x="80.0" y="179.0" width="150.0" height="44.0" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="155.0" y="203.5" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">load X tile</text>
+<rect x="80.0" y="239.0" width="150.0" height="44.0" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="155.0" y="263.5" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">load W tile</text>
+<rect x="260.0" y="179.0" width="160.0" height="44.0" rx="12" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="2"/>
+<text x="340.0" y="203.3" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">load X/W scales</text>
+<rect x="260.0" y="239.0" width="160.0" height="104.0" rx="12" fill="#ffec99" stroke="#1e1e1e" stroke-width="2"/>
+<text x="340.0" y="277.3" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">tl.dot_scaled</text>
+<text x="340.0" y="293.5" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">e4m3 × e4m3</text>
+<text x="340.0" y="309.8" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">acc += , fast_math</text>
+<rect x="450.0" y="179.0" width="150.0" height="44.0" rx="12" fill="#e9ecef" stroke="#1e1e1e" stroke-width="2"/>
+<text x="525.0" y="195.8" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">advance ptrs</text>
+<text x="525.0" y="210.8" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">+= BLOCK_K</text>
+<polyline points="420.0,225.0 320.0,285.0" fill="none" stroke="#868e96" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="320.0" y1="285.0" x2="331.0" y2="284.4" stroke="#868e96" stroke-width="2" stroke-linecap="round"/>
+<line x1="320.0" y1="285.0" x2="325.7" y2="275.6" stroke="#868e96" stroke-width="2" stroke-linecap="round"/>
+<polyline points="340.0,365.0 340.0,395.0 80.0,395.0 80.0,165.0" fill="none" stroke="#1971c2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,6"/>
+<line x1="80.0" y1="165.0" x2="74.8" y2="174.7" stroke="#1971c2" stroke-width="2" stroke-linecap="round"/>
+<line x1="80.0" y1="165.0" x2="85.2" y2="174.7" stroke="#1971c2" stroke-width="2" stroke-linecap="round"/>
+<text x="700.0" y="133.1" font-size="16" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#e8590c" text-anchor="start">EVEN_K peel (tail)</text>
+<rect x="700.0" y="160.0" width="320.0" height="70.0" rx="12" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="2"/>
+<text x="860.0" y="189.4" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">if K % BLOCK_K == 0 → EVEN_K=True</text>
+<text x="860.0" y="205.7" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">main loop runs all iters, no masking</text>
+<rect x="700.0" y="245.0" width="320.0" height="90.0" rx="12" fill="#ffd8a8" stroke="#1e1e1e" stroke-width="2"/>
+<text x="860.0" y="276.3" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">else → run num_k_iter-1 unmasked,</text>
+<text x="860.0" y="292.5" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">then ONE masked tail iteration</text>
+<text x="860.0" y="308.8" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">(offs_k &lt; MASK_K_LIMIT)</text>
+<text x="700.0" y="360.7" font-size="13" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">→ no per-iteration K-mask compare in the</text>
+<text x="700.0" y="376.9" font-size="13" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">  common (EVEN_K) path; bounds check paid once.</text>
+<rect x="60.0" y="400.0" width="960.0" height="56.0" rx="12" fill="#e9ecef" stroke="#1e1e1e" stroke-width="2"/>
+<text x="540.0" y="430.9" font-size="15" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">acc = tl.dot_scaled(x, x_scales, "e4m3", w, w_scales, "e4m3", acc=acc, fast_math=True)</text>
+<text x="60.0" y="485.7" font-size="13" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#2f9e44" text-anchor="start">Scales ride straight into the MFMA scale operand — no separate fp8→bf16 dequantize + multiply pass over the tile.</text>
+</svg>

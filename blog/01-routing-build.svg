@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1128" height="636" viewBox="16.0 -4.0 1128.0 635.5" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+<rect x="16.0" y="-4.0" width="1128.0" height="635.5" fill="#ffffff"/>
+<text x="40.0" y="43.0" font-size="28" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#c41e3a" text-anchor="start">Optimization 1 — Sync-free routing build (_expt_data_kernel)</text>
+<text x="40.0" y="71.5" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">group_end_offsets  →  hist · offs · pad_sum · packed (block&lt;&lt;16|expt) map</text>
+<text x="60.0" y="124.8" font-size="18" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#c41e3a" text-anchor="start">BEFORE  ·  host-side op chain</text>
+<rect x="60.0" y="150.0" width="110.0" height="44.0" rx="12" fill="#ffc9c9" stroke="#1e1e1e" stroke-width="2"/>
+<text x="115.0" y="174.9" font-size="15" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">cat</text>
+<polyline points="170.0,172.0 192.0,172.0" fill="none" stroke="#868e96" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="192.0" y1="172.0" x2="182.3" y2="166.8" stroke="#868e96" stroke-width="2" stroke-linecap="round"/>
+<line x1="192.0" y1="172.0" x2="182.3" y2="177.2" stroke="#868e96" stroke-width="2" stroke-linecap="round"/>
+<rect x="192.0" y="150.0" width="110.0" height="44.0" rx="12" fill="#ffc9c9" stroke="#1e1e1e" stroke-width="2"/>
+<text x="247.0" y="174.9" font-size="15" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">diff</text>
+<polyline points="302.0,172.0 324.0,172.0" fill="none" stroke="#868e96" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="324.0" y1="172.0" x2="314.3" y2="166.8" stroke="#868e96" stroke-width="2" stroke-linecap="round"/>
+<line x1="324.0" y1="172.0" x2="314.3" y2="177.2" stroke="#868e96" stroke-width="2" stroke-linecap="round"/>
+<rect x="324.0" y="150.0" width="110.0" height="44.0" rx="12" fill="#ffc9c9" stroke="#1e1e1e" stroke-width="2"/>
+<text x="379.0" y="174.9" font-size="15" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">cumsum</text>
+<polyline points="434.0,172.0 456.0,172.0" fill="none" stroke="#868e96" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="456.0" y1="172.0" x2="446.3" y2="166.8" stroke="#868e96" stroke-width="2" stroke-linecap="round"/>
+<line x1="456.0" y1="172.0" x2="446.3" y2="177.2" stroke="#868e96" stroke-width="2" stroke-linecap="round"/>
+<rect x="456.0" y="150.0" width="110.0" height="44.0" rx="12" fill="#ffc9c9" stroke="#1e1e1e" stroke-width="2"/>
+<text x="511.0" y="174.9" font-size="15" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">arange</text>
+<polyline points="566.0,172.0 588.0,172.0" fill="none" stroke="#868e96" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="588.0" y1="172.0" x2="578.3" y2="166.8" stroke="#868e96" stroke-width="2" stroke-linecap="round"/>
+<line x1="588.0" y1="172.0" x2="578.3" y2="177.2" stroke="#868e96" stroke-width="2" stroke-linecap="round"/>
+<polyline points="116.0,194.0 116.0,216.0" fill="none" stroke="#868e96" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="116.0" y1="216.0" x2="121.2" y2="206.3" stroke="#868e96" stroke-width="2" stroke-linecap="round"/>
+<line x1="116.0" y1="216.0" x2="110.8" y2="206.3" stroke="#868e96" stroke-width="2" stroke-linecap="round"/>
+<rect x="60.0" y="240.0" width="110.0" height="44.0" rx="12" fill="#ffc9c9" stroke="#1e1e1e" stroke-width="2"/>
+<text x="115.0" y="264.9" font-size="15" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">searchsorted</text>
+<polyline points="170.0,262.0 192.0,262.0" fill="none" stroke="#868e96" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="192.0" y1="262.0" x2="182.3" y2="256.8" stroke="#868e96" stroke-width="2" stroke-linecap="round"/>
+<line x1="192.0" y1="262.0" x2="182.3" y2="267.2" stroke="#868e96" stroke-width="2" stroke-linecap="round"/>
+<rect x="192.0" y="240.0" width="110.0" height="44.0" rx="12" fill="#ffc9c9" stroke="#1e1e1e" stroke-width="2"/>
+<text x="247.0" y="264.9" font-size="15" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">clamp</text>
+<polyline points="302.0,262.0 324.0,262.0" fill="none" stroke="#868e96" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="324.0" y1="262.0" x2="314.3" y2="256.8" stroke="#868e96" stroke-width="2" stroke-linecap="round"/>
+<line x1="324.0" y1="262.0" x2="314.3" y2="267.2" stroke="#868e96" stroke-width="2" stroke-linecap="round"/>
+<rect x="324.0" y="240.0" width="110.0" height="44.0" rx="12" fill="#ffc9c9" stroke="#1e1e1e" stroke-width="2"/>
+<text x="379.0" y="264.9" font-size="15" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">shift</text>
+<polyline points="434.0,262.0 456.0,262.0" fill="none" stroke="#868e96" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="456.0" y1="262.0" x2="446.3" y2="256.8" stroke="#868e96" stroke-width="2" stroke-linecap="round"/>
+<line x1="456.0" y1="262.0" x2="446.3" y2="267.2" stroke="#868e96" stroke-width="2" stroke-linecap="round"/>
+<rect x="456.0" y="240.0" width="110.0" height="44.0" rx="12" fill="#ffc9c9" stroke="#1e1e1e" stroke-width="2"/>
+<text x="511.0" y="264.9" font-size="15" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">where</text>
+<text x="60.0" y="341.5" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#c41e3a" text-anchor="start">≈ 30–40 µs host-visible launch overhead · 8 kernel launches · CPU↔GPU syncs</text>
+<polyline points="40.0,380.0 1120.0,380.0" fill="none" stroke="#e9ecef" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,6"/>
+<text x="60.0" y="424.8" font-size="18" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#2f9e44" text-anchor="start">AFTER  ·  one Triton launch</text>
+<rect x="60.0" y="450.0" width="230.0" height="120.0" rx="12" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="2"/>
+<text x="175.0" y="486.5" font-size="14" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">_expt_data_kernel</text>
+<text x="175.0" y="504.0" font-size="14" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle"></text>
+<text x="175.0" y="521.5" font-size="14" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">static_range(E)</text>
+<text x="175.0" y="539.0" font-size="14" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">prefix-sum in regs</text>
+<polyline points="290.0,510.0 350.0,510.0" fill="none" stroke="#1e1e1e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="350.0" y1="510.0" x2="340.3" y2="504.8" stroke="#1e1e1e" stroke-width="2" stroke-linecap="round"/>
+<line x1="350.0" y1="510.0" x2="340.3" y2="515.2" stroke="#1e1e1e" stroke-width="2" stroke-linecap="round"/>
+<rect x="370.0" y="410.0" width="250.0" height="34.0" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="495.0" y="429.7" font-size="14" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">ExptHist (E,)</text>
+<rect x="370.0" y="454.0" width="250.0" height="34.0" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="495.0" y="473.7" font-size="14" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">ExptOffs (E,)</text>
+<rect x="370.0" y="498.0" width="250.0" height="34.0" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="495.0" y="517.7" font-size="14" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">ExptOffsSum (0-d)</text>
+<rect x="370.0" y="542.0" width="250.0" height="34.0" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="495.0" y="561.7" font-size="14" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">ExptData packed map</text>
+<text x="60.0" y="601.5" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#2f9e44" text-anchor="start">≈ 2–3 µs · single launch · no host sync · torch.compile-clean</text>
+<rect x="720.0" y="450.0" width="320.0" height="110.0" rx="12" fill="#ffec99" stroke="#e8590c" stroke-width="2"/>
+<text x="880.0" y="495.5" font-size="22" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">≈ 10–15× lower</text>
+<text x="880.0" y="523.0" font-size="22" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">routing overhead</text>
+</svg>

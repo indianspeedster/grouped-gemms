@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1034" height="568" viewBox="16.0 -4.0 1033.6 568.0" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+<rect x="16.0" y="-4.0" width="1033.6" height="568.0" fill="#ffffff"/>
+<text x="40.0" y="43.0" font-size="28" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#c41e3a" text-anchor="start">Optimization 2 — Packed expert→tile routing (one int32 per tile)</text>
+<text x="40.0" y="71.5" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">Each program reads one int32, decodes its expert + block, or skips a -1 pad tile.</text>
+<text x="60.0" y="124.8" font-size="18" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1971c2" text-anchor="start">ExptData[pid_m]  —  packed int32</text>
+<rect x="60.0" y="150.0" width="300.0" height="56.0" rx="12" fill="#d0bfff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="210.0" y="181.5" font-size="18" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">block_id  &lt;&lt;  16</text>
+<rect x="360.0" y="150.0" width="300.0" height="56.0" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="510.0" y="181.5" font-size="18" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">expt_id  &amp;  0xFFFF</text>
+<rect x="680.0" y="150.0" width="180.0" height="56.0" rx="12" fill="#ffc9c9" stroke="#1e1e1e" stroke-width="2"/>
+<text x="770.0" y="180.9" font-size="15" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">-1  =  pad → return</text>
+<text x="60.0" y="274.8" font-size="18" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="start">Expert-sorted M (jagged) chopped into BLOCK_M tiles</text>
+<rect x="60.0" y="300.0" width="70.0" height="50.0" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="95.0" y="319.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">E0</text>
+<text x="95.0" y="334.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">blk0</text>
+<text x="95.0" y="368.1" font-size="11" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="middle">pid 0</text>
+<rect x="136.0" y="300.0" width="70.0" height="50.0" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="171.0" y="319.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">E0</text>
+<text x="171.0" y="334.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">blk1</text>
+<text x="171.0" y="368.1" font-size="11" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="middle">pid 1</text>
+<rect x="212.0" y="300.0" width="70.0" height="50.0" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="247.0" y="319.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">E0</text>
+<text x="247.0" y="334.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">blk2</text>
+<text x="247.0" y="368.1" font-size="11" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="middle">pid 2</text>
+<rect x="306.0" y="300.0" width="70.0" height="50.0" rx="12" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="2"/>
+<text x="341.0" y="319.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">E1</text>
+<text x="341.0" y="334.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">blk0</text>
+<text x="341.0" y="368.1" font-size="11" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="middle">pid 3</text>
+<rect x="382.0" y="300.0" width="70.0" height="50.0" rx="12" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="2"/>
+<text x="417.0" y="319.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">E1</text>
+<text x="417.0" y="334.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">blk1</text>
+<text x="417.0" y="368.1" font-size="11" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="middle">pid 4</text>
+<rect x="476.0" y="300.0" width="70.0" height="50.0" rx="12" fill="#ffec99" stroke="#1e1e1e" stroke-width="2"/>
+<text x="511.0" y="319.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">E2</text>
+<text x="511.0" y="334.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">blk0</text>
+<text x="511.0" y="368.1" font-size="11" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="middle">pid 5</text>
+<rect x="552.0" y="300.0" width="70.0" height="50.0" rx="12" fill="#ffec99" stroke="#1e1e1e" stroke-width="2"/>
+<text x="587.0" y="319.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">E2</text>
+<text x="587.0" y="334.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">blk1</text>
+<text x="587.0" y="368.1" font-size="11" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="middle">pid 6</text>
+<rect x="628.0" y="300.0" width="70.0" height="50.0" rx="12" fill="#ffec99" stroke="#1e1e1e" stroke-width="2"/>
+<text x="663.0" y="319.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">E2</text>
+<text x="663.0" y="334.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">blk2</text>
+<text x="663.0" y="368.1" font-size="11" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="middle">pid 7</text>
+<rect x="704.0" y="300.0" width="70.0" height="50.0" rx="12" fill="#ffec99" stroke="#1e1e1e" stroke-width="2"/>
+<text x="739.0" y="319.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">E2</text>
+<text x="739.0" y="334.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">blk3</text>
+<text x="739.0" y="368.1" font-size="11" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="middle">pid 8</text>
+<rect x="798.0" y="300.0" width="70.0" height="50.0" rx="12" fill="#ffd8a8" stroke="#1e1e1e" stroke-width="2"/>
+<text x="833.0" y="319.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">E3</text>
+<text x="833.0" y="334.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">blk0</text>
+<text x="833.0" y="368.1" font-size="11" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="middle">pid 9</text>
+<rect x="892.0" y="300.0" width="70.0" height="50.0" rx="12" fill="#ffc9c9" stroke="#1e1e1e" stroke-width="2"/>
+<text x="927.0" y="319.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">PAD</text>
+<text x="927.0" y="334.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">-1</text>
+<text x="927.0" y="368.1" font-size="11" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="middle">pid 10</text>
+<text x="60.0" y="421.5" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">Mapping is built once by Opt-1; the GEMM kernel does a single tl.load + bit ops — no</text>
+<text x="60.0" y="439.0" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">binary search, no per-tile expert scan inside the hot loop.</text>
+<rect x="60.0" y="480.0" width="900.0" height="60.0" rx="12" fill="#e9ecef" stroke="#1e1e1e" stroke-width="2"/>
+<text x="510.0" y="503.6" font-size="15" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">expt_data = tl.load(ExptData + pid_m);  if expt_data == -1: return</text>
+<text x="510.0" y="522.3" font-size="15" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">expt_id = expt_data &amp; 0xFFFF;  block_id = expt_data &gt;&gt; 16</text>
+</svg>

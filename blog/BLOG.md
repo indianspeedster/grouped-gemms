@@ -14,10 +14,11 @@ e8m0 scales) directly through `tl.dot_scaled`. On a 36-shape Llama4 sweep
 reaches a **geomean 1.49× over bf16** (`torch._grouped_mm`), peaking near
 **1924 TFLOPS**, while holding **27.6 dB SQNR** on every shape.
 
-The wins came from seven distinct layers. Each section below has an editable
-Excalidraw scene (`blog/NN-*.excalidraw`) — open it at
-[excalidraw.com](https://excalidraw.com) (*File → Open*) and *Export* to PNG/SVG
-to embed in the published post.
+The wins came from seven distinct layers. Each section below embeds a rendered
+**SVG** (shows inline on GitHub / any Markdown renderer) and ships the matching
+**editable Excalidraw scene** (`blog/NN-*.excalidraw`) — open it at
+[excalidraw.com](https://excalidraw.com) (*File → Open*) to tweak, or re-run
+`python blog/gen_diagrams.py` to regenerate both.
 
 > **Diagram index**
 > | # | Optimization | Scene file |
@@ -56,6 +57,8 @@ about feeding the MFMA units more efficiently.
 
 **Scene:** `01-routing-build.excalidraw`
 
+![01-routing-build.svg](01-routing-build.svg)
+
 The naive way to turn `group_end_offsets` into the per-tile routing metadata is a
 chain of host-side tensor ops: `cat → diff → cumsum → arange → searchsorted →
 clamp → shift → where`. That's ~8 kernel launches and host↔device syncs,
@@ -81,6 +84,8 @@ green box fanning out to the four output tensors.
 ## Optimization 2 — Packed expert→tile routing
 
 **Scene:** `02-packed-expert-map.excalidraw`
+
+![02-packed-expert-map.svg](02-packed-expert-map.svg)
 
 Inside the GEMM, every program needs to know *which expert* and *which row-block*
 it owns. Doing a binary search or expert scan per tile would burn the savings
@@ -111,6 +116,8 @@ tile's identity.
 
 **Scene:** `03-group-m-l2-reuse.excalidraw`
 
+![03-group-m-l2-reuse.svg](03-group-m-l2-reuse.svg)
+
 Program IDs map to `(pid_m, pid_n)` output tiles. If you iterate row-major
 (`GROUP_M = 1`), consecutive programs sweep an entire N row before advancing M —
 so the tiles running concurrently across the machine share almost no working set
@@ -129,6 +136,8 @@ strip; the grouped one highlights a fat reuse block.
 ## Optimization 4 — XCD swizzle
 
 **Scene:** `04-xcd-swizzle.excalidraw`
+
+![04-xcd-swizzle.svg](04-xcd-swizzle.svg)
 
 MI355X is built from **8 XCDs** (accelerator complex dies), and the hardware
 dispatches workgroups round-robin: program `p` lands on XCD `p % 8`. Each XCD has
@@ -153,6 +162,8 @@ tuned down to 4 on a couple of shapes.
 ## Optimization 5 — CDNA4-native pre-shuffled MX scale layout
 
 **Scene:** `05-cdna4-scale-shuffle.excalidraw`
+
+![05-cdna4-scale-shuffle.svg](05-cdna4-scale-shuffle.svg)
 
 This is the CDNA4-specific win and the most subtle one. `tl.dot_scaled` lowers to
 `v_mfma_scale_f32_16x16x128_f8f6f4`, which wants its e8m0 scale operands in a
@@ -181,6 +192,8 @@ Details captured in the diagram:
 
 **Scene:** `06-dot-scaled-kloop.excalidraw`
 
+![06-dot-scaled-kloop.svg](06-dot-scaled-kloop.svg)
+
 Two things in the inner loop:
 
 **Scales ride into the MFMA.** Rather than dequantizing fp8→bf16 and multiplying
@@ -205,6 +218,8 @@ loop-back arrow, and the EVEN_K decision feeding the tail.
 ## Optimization 7 — Per-shape autotuning
 
 **Scene:** `07-per-shape-autotune.excalidraw`
+
+![07-per-shape-autotune.svg](07-per-shape-autotune.svg)
 
 None of the above fixes a single config across shapes. We swept a
 **576-config** space per shape:

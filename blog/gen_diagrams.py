@@ -99,6 +99,91 @@ def box(x, y, w, h, s, bg=WHITE, stroke=INK, size=16, tcolor=INK, sw=2, family=1
     return [rect(x, y, w, h, bg=bg, stroke=stroke, sw=sw, dash=dash),
             label(x + w / 2, y + h / 2, s, size=size, color=tcolor, family=family)]
 
+def _xml_escape(s):
+    return (s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
+
+_FONT = {1: "Segoe UI, Helvetica, Arial, sans-serif",
+         2: "Helvetica, Arial, sans-serif",
+         3: "Consolas, 'Courier New', monospace"}
+
+def to_svg(elements, pad=24):
+    # bounds
+    xs, ys, xe, ye = [], [], [], []
+    for e in elements:
+        if e["type"] in ("arrow", "line"):
+            for px, py in e["points"]:
+                xs.append(e["x"] + px); ys.append(e["y"] + py)
+                xe.append(e["x"] + px); ye.append(e["y"] + py)
+        else:
+            xs.append(e["x"]); ys.append(e["y"])
+            xe.append(e["x"] + e["width"]); ye.append(e["y"] + e["height"])
+    minx, miny = min(xs) - pad, min(ys) - pad
+    maxx, maxy = max(xe) + pad, max(ye) + pad
+    W, H = maxx - minx, maxy - miny
+
+    def dash(e):
+        if e.get("strokeStyle") == "dashed":
+            d = e["strokeWidth"] * 3
+            return ' stroke-dasharray="%d,%d"' % (d, d)
+        return ""
+
+    out = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{W:.0f}" height="{H:.0f}" '
+           f'viewBox="{minx:.1f} {miny:.1f} {W:.1f} {H:.1f}" font-family="{_FONT[1]}">',
+           f'<rect x="{minx:.1f}" y="{miny:.1f}" width="{W:.1f}" height="{H:.1f}" fill="#ffffff"/>']
+
+    for e in elements:
+        t = e["type"]
+        sc = e["strokeColor"]; sw = e["strokeWidth"]
+        bg = e["backgroundColor"]
+        fill = "none" if bg in (None, "transparent", "") else bg
+        if t == "rectangle":
+            rx = 12 if e.get("roundness") else 0
+            out.append(f'<rect x="{e["x"]:.1f}" y="{e["y"]:.1f}" width="{e["width"]:.1f}" '
+                       f'height="{e["height"]:.1f}" rx="{rx}" fill="{fill}" stroke="{sc}" '
+                       f'stroke-width="{sw}"{dash(e)}/>')
+        elif t == "ellipse":
+            out.append(f'<ellipse cx="{e["x"]+e["width"]/2:.1f}" cy="{e["y"]+e["height"]/2:.1f}" '
+                       f'rx="{e["width"]/2:.1f}" ry="{e["height"]/2:.1f}" fill="{fill}" '
+                       f'stroke="{sc}" stroke-width="{sw}"{dash(e)}/>')
+        elif t in ("line", "arrow"):
+            pts = " ".join(f"{e['x']+px:.1f},{e['y']+py:.1f}" for px, py in e["points"])
+            out.append(f'<polyline points="{pts}" fill="none" stroke="{sc}" '
+                       f'stroke-width="{sw}" stroke-linecap="round" stroke-linejoin="round"{dash(e)}/>')
+            if t == "arrow":
+                for which, head in (("end", e.get("endArrowhead")), ("start", e.get("startArrowhead"))):
+                    if not head:
+                        continue
+                    if which == "end":
+                        (x1, y1), (x0, y0) = e["points"][-2], e["points"][-1]
+                    else:
+                        (x1, y1), (x0, y0) = e["points"][1], e["points"][0]
+                    import math
+                    ang = math.atan2(y0 - y1, x0 - x1)
+                    L = 11
+                    ax, ay = e["x"] + x0, e["y"] + y0
+                    for da in (math.radians(28), -math.radians(28)):
+                        bx = ax - L * math.cos(ang + da)
+                        by = ay - L * math.sin(ang + da)
+                        out.append(f'<line x1="{ax:.1f}" y1="{ay:.1f}" x2="{bx:.1f}" y2="{by:.1f}" '
+                                   f'stroke="{sc}" stroke-width="{sw}" stroke-linecap="round"/>')
+        elif t == "text":
+            fs = e["fontSize"]; fam = _FONT.get(e.get("fontFamily", 1))
+            anchor = {"left": "start", "center": "middle", "right": "end"}[e["textAlign"]]
+            if anchor == "start":
+                tx = e["x"]
+            elif anchor == "middle":
+                tx = e["x"] + e["width"] / 2
+            else:
+                tx = e["x"] + e["width"]
+            lines = e["text"].split("\n")
+            for i, ln in enumerate(lines):
+                ty = e["y"] + fs * (0.82 + i * e.get("lineHeight", 1.25))
+                out.append(f'<text x="{tx:.1f}" y="{ty:.1f}" font-size="{fs}" '
+                           f'font-family="{fam}" fill="{e["strokeColor"]}" '
+                           f'text-anchor="{anchor}">{_xml_escape(ln)}</text>')
+    out.append("</svg>")
+    return "\n".join(out)
+
 def save(name, elements, title):
     scene = {
         "type": "excalidraw", "version": 2,
@@ -110,7 +195,10 @@ def save(name, elements, title):
     path = os.path.join(OUT, name)
     with open(path, "w") as f:
         json.dump(scene, f, indent=2)
-    print(f"wrote {name}  ({len(elements)} elements)  — {title}")
+    svg_name = name.replace(".excalidraw", ".svg")
+    with open(os.path.join(OUT, svg_name), "w") as f:
+        f.write(to_svg(elements))
+    print(f"wrote {name} + {svg_name}  ({len(elements)} elements)  — {title}")
 
 def header(s, x=40, y=20, color=RED):
     return text(x, y, s, size=28, color=color, family=1)
