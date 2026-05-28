@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="986" height="493" viewBox="16.0 -4.0 986.0 493.0" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+<rect x="16.0" y="-4.0" width="986.0" height="493.0" fill="#ffffff"/>
+<text x="40.0" y="43.0" font-size="28" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#c41e3a" text-anchor="start">L3b — XCD swizzle (8-XCD scheduling)</text>
+<text x="40.0" y="71.5" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">MI355X = 8 XCDs, each with its own L2 slice. HW dispatches pid % 8. Pre-swizzle for contiguous per-XCD ranges.</text>
+<text x="60.0" y="127.3" font-size="15" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#c41e3a" text-anchor="start">Without swizzle: pid % 8 scatters a reuse block across all 8 XCDs</text>
+<rect x="60.0" y="150.0" width="106.0" height="42.0" rx="12" fill="#e9ecef" stroke="#1e1e1e" stroke-width="2"/>
+<text x="113.0" y="173.5" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">XCD 0</text>
+<text x="113.0" y="217.1" font-size="11" font-family="Consolas, 'Courier New', monospace" fill="#868e96" text-anchor="middle">0,8,16</text>
+<rect x="176.0" y="150.0" width="106.0" height="42.0" rx="12" fill="#e9ecef" stroke="#1e1e1e" stroke-width="2"/>
+<text x="229.0" y="173.5" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">XCD 1</text>
+<text x="229.0" y="217.1" font-size="11" font-family="Consolas, 'Courier New', monospace" fill="#868e96" text-anchor="middle">1,9,17</text>
+<rect x="292.0" y="150.0" width="106.0" height="42.0" rx="12" fill="#e9ecef" stroke="#1e1e1e" stroke-width="2"/>
+<text x="345.0" y="173.5" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">XCD 2</text>
+<text x="345.0" y="217.1" font-size="11" font-family="Consolas, 'Courier New', monospace" fill="#868e96" text-anchor="middle">2,10,18</text>
+<rect x="408.0" y="150.0" width="106.0" height="42.0" rx="12" fill="#e9ecef" stroke="#1e1e1e" stroke-width="2"/>
+<text x="461.0" y="173.5" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">XCD 3</text>
+<text x="461.0" y="217.1" font-size="11" font-family="Consolas, 'Courier New', monospace" fill="#868e96" text-anchor="middle">3,11,19</text>
+<rect x="524.0" y="150.0" width="106.0" height="42.0" rx="12" fill="#e9ecef" stroke="#1e1e1e" stroke-width="2"/>
+<text x="577.0" y="173.5" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">XCD 4</text>
+<text x="577.0" y="217.1" font-size="11" font-family="Consolas, 'Courier New', monospace" fill="#868e96" text-anchor="middle">4,12,20</text>
+<rect x="640.0" y="150.0" width="106.0" height="42.0" rx="12" fill="#e9ecef" stroke="#1e1e1e" stroke-width="2"/>
+<text x="693.0" y="173.5" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">XCD 5</text>
+<text x="693.0" y="217.1" font-size="11" font-family="Consolas, 'Courier New', monospace" fill="#868e96" text-anchor="middle">5,13,21</text>
+<rect x="756.0" y="150.0" width="106.0" height="42.0" rx="12" fill="#e9ecef" stroke="#1e1e1e" stroke-width="2"/>
+<text x="809.0" y="173.5" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">XCD 6</text>
+<text x="809.0" y="217.1" font-size="11" font-family="Consolas, 'Courier New', monospace" fill="#868e96" text-anchor="middle">6,14,22</text>
+<rect x="872.0" y="150.0" width="106.0" height="42.0" rx="12" fill="#e9ecef" stroke="#1e1e1e" stroke-width="2"/>
+<text x="925.0" y="173.5" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">XCD 7</text>
+<text x="925.0" y="217.1" font-size="11" font-family="Consolas, 'Courier New', monospace" fill="#868e96" text-anchor="middle">7,15,23</text>
+<polyline points="520.0,250.0 520.0,290.0" fill="none" stroke="#6741d9" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="520.0" y1="290.0" x2="525.2" y2="280.3" stroke="#6741d9" stroke-width="3" stroke-linecap="round"/>
+<line x1="520.0" y1="290.0" x2="514.8" y2="280.3" stroke="#6741d9" stroke-width="3" stroke-linecap="round"/>
+<text x="700.0" y="272.7" font-size="14" font-family="Consolas, 'Courier New', monospace" fill="#6741d9" text-anchor="middle">_xcd_swizzle(pid, domain, 8)</text>
+<text x="60.0" y="327.3" font-size="15" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#2f9e44" text-anchor="start">After swizzle: each XCD owns a contiguous tile range → its L2 slice sees the reuse</text>
+<rect x="60.0" y="350.0" width="106.0" height="42.0" rx="12" fill="#ffc9c9" stroke="#1e1e1e" stroke-width="2"/>
+<text x="113.0" y="373.5" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">XCD 0</text>
+<text x="113.0" y="417.1" font-size="11" font-family="Consolas, 'Courier New', monospace" fill="#868e96" text-anchor="middle">0…2</text>
+<rect x="176.0" y="350.0" width="106.0" height="42.0" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="229.0" y="373.5" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">XCD 1</text>
+<text x="229.0" y="417.1" font-size="11" font-family="Consolas, 'Courier New', monospace" fill="#868e96" text-anchor="middle">3…5</text>
+<rect x="292.0" y="350.0" width="106.0" height="42.0" rx="12" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="2"/>
+<text x="345.0" y="373.5" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">XCD 2</text>
+<text x="345.0" y="417.1" font-size="11" font-family="Consolas, 'Courier New', monospace" fill="#868e96" text-anchor="middle">6…8</text>
+<rect x="408.0" y="350.0" width="106.0" height="42.0" rx="12" fill="#ffec99" stroke="#1e1e1e" stroke-width="2"/>
+<text x="461.0" y="373.5" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">XCD 3</text>
+<text x="461.0" y="417.1" font-size="11" font-family="Consolas, 'Courier New', monospace" fill="#868e96" text-anchor="middle">9…11</text>
+<rect x="524.0" y="350.0" width="106.0" height="42.0" rx="12" fill="#d0bfff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="577.0" y="373.5" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">XCD 4</text>
+<text x="577.0" y="417.1" font-size="11" font-family="Consolas, 'Courier New', monospace" fill="#868e96" text-anchor="middle">12…14</text>
+<rect x="640.0" y="350.0" width="106.0" height="42.0" rx="12" fill="#ffd8a8" stroke="#1e1e1e" stroke-width="2"/>
+<text x="693.0" y="373.5" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">XCD 5</text>
+<text x="693.0" y="417.1" font-size="11" font-family="Consolas, 'Courier New', monospace" fill="#868e96" text-anchor="middle">15…17</text>
+<rect x="756.0" y="350.0" width="106.0" height="42.0" rx="12" fill="#c5f6fa" stroke="#1e1e1e" stroke-width="2"/>
+<text x="809.0" y="373.5" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">XCD 6</text>
+<text x="809.0" y="417.1" font-size="11" font-family="Consolas, 'Courier New', monospace" fill="#868e96" text-anchor="middle">18…20</text>
+<rect x="872.0" y="350.0" width="106.0" height="42.0" rx="12" fill="#eebefa" stroke="#1e1e1e" stroke-width="2"/>
+<text x="925.0" y="373.5" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">XCD 7</text>
+<text x="925.0" y="417.1" font-size="11" font-family="Consolas, 'Courier New', monospace" fill="#868e96" text-anchor="middle">21…23</text>
+<text x="60.0" y="459.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">L3 (GROUP_M + XCD together): modest on these large shapes; the locality story is mostly amortized once tiles are big.</text>
+</svg>

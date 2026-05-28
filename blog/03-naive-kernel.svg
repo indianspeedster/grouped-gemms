@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="870" height="474" viewBox="16.0 -4.0 869.8 474.2" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+<rect x="16.0" y="-4.0" width="869.8" height="474.2" fill="#ffffff"/>
+<text x="40.0" y="43.0" font-size="28" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#c41e3a" text-anchor="start">The naive baseline (L0)</text>
+<text x="40.0" y="71.5" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">Correct MXFP8 grouped GEMM, zero AMD tuning. One output tile per program. Measured: 0.93× bf16 — slower.</text>
+<rect x="60.0" y="110.0" width="300.0" height="60.0" rx="12" fill="#ffc9c9" stroke="#1e1e1e" stroke-width="2"/>
+<text x="210.0" y="134.4" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">host torch routing</text>
+<text x="210.0" y="150.7" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">cat·diff·cumsum·searchsorted…</text>
+<rect x="60.0" y="195.0" width="300.0" height="50.0" rx="12" fill="#ffc9c9" stroke="#1e1e1e" stroke-width="2"/>
+<text x="210.0" y="214.4" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">GROUP_M=1 · XCD=1</text>
+<text x="210.0" y="230.7" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">(row-major tiles)</text>
+<rect x="60.0" y="270.0" width="300.0" height="50.0" rx="12" fill="#ffc9c9" stroke="#1e1e1e" stroke-width="2"/>
+<text x="210.0" y="289.8" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">plain scales</text>
+<text x="210.0" y="304.8" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">(row-major, re-shuffled in-kernel)</text>
+<rect x="60.0" y="345.0" width="300.0" height="50.0" rx="12" fill="#ffc9c9" stroke="#1e1e1e" stroke-width="2"/>
+<text x="210.0" y="372.5" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">small 64×128 tile · 1 stage</text>
+<text x="440.0" y="123.1" font-size="16" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1971c2" text-anchor="start">per-program inner loop</text>
+<rect x="440.0" y="145.0" width="420.0" height="200.0" rx="12" fill="#f8f9fa" stroke="#1971c2" stroke-width="2"/>
+<rect x="460.0" y="169.0" width="180.0" height="40.0" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="550.0" y="191.5" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">load X, W tile</text>
+<rect x="460.0" y="223.0" width="180.0" height="40.0" rx="12" fill="#ffec99" stroke="#1e1e1e" stroke-width="2"/>
+<text x="550.0" y="245.3" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">load + unshuffle scales</text>
+<rect x="660.0" y="169.0" width="170.0" height="94.0" rx="12" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="2"/>
+<text x="745.0" y="202.3" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">acc +=</text>
+<text x="745.0" y="218.5" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">tl.dot_scaled</text>
+<text x="745.0" y="234.8" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">(e4m3 × e4m3)</text>
+<rect x="460.0" y="277.0" width="370.0" height="40.0" rx="12" fill="#e9ecef" stroke="#1e1e1e" stroke-width="2"/>
+<text x="645.0" y="299.5" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">loop K  →  write acc to out</text>
+<rect x="440.0" y="380.0" width="420.0" height="60.0" rx="12" fill="#ffec99" stroke="#e8590c" stroke-width="2"/>
+<text x="650.0" y="404.0" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">Result: 0.93× bf16 geomean — the scale-load shuffle and</text>
+<text x="650.0" y="421.5" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">tiny tiles leave the MFMA units starved.</text>
+<text x="60.0" y="440.7" font-size="13" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">Every box on the left is an opportunity. The rest of the post lights them up one rung at a time.</text>
+</svg>

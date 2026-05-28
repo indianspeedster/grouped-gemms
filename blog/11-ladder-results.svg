@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1097" height="606" viewBox="16.0 -4.0 1097.3 606.2" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+<rect x="16.0" y="-4.0" width="1097.3" height="606.2" fill="#ffffff"/>
+<text x="40.0" y="43.0" font-size="28" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#c41e3a" text-anchor="start">The ladder — measured geomean vs bf16</text>
+<text x="40.0" y="71.5" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">6 representative Llama4 shapes on MI355X. Each rung adds one optimization to the previous.</text>
+<polyline points="90.0,470.0 1060.0,470.0" fill="none" stroke="#1e1e1e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<polyline points="90.0,470.0 90.0,69.0" fill="none" stroke="#1e1e1e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<polyline points="90.0,240.0 1060.0,240.0" fill="none" stroke="#c41e3a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,6"/>
+<text x="1050.0" y="228.5" font-size="13" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#c41e3a" text-anchor="middle">bf16 = 1.0×</text>
+<rect x="120.0" y="256.1" width="120.0" height="213.9" rx="12" fill="#ffc9c9" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="180.0" y="241.2" font-size="16" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">0.93×</text>
+<text x="180.0" y="490.4" font-size="13" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">L0</text>
+<text x="180.0" y="506.7" font-size="13" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">naive</text>
+<rect x="280.0" y="226.2" width="120.0" height="243.8" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="340.0" y="211.3" font-size="16" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">1.06×</text>
+<text x="340.0" y="490.4" font-size="13" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">L1</text>
+<text x="340.0" y="506.7" font-size="13" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">+routing</text>
+<rect x="440.0" y="246.9" width="120.0" height="223.1" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="500.0" y="232.0" font-size="16" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">0.97×</text>
+<text x="500.0" y="490.4" font-size="13" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">L2</text>
+<text x="500.0" y="506.7" font-size="13" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">+tiles</text>
+<rect x="600.0" y="237.7" width="120.0" height="232.3" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="660.0" y="222.8" font-size="16" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">1.01×</text>
+<text x="660.0" y="490.4" font-size="13" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">L3</text>
+<text x="660.0" y="506.7" font-size="13" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">+sched</text>
+<rect x="760.0" y="125.0" width="120.0" height="345.0" rx="12" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="820.0" y="110.1" font-size="16" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">1.50×</text>
+<text x="820.0" y="482.3" font-size="13" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">L4</text>
+<text x="820.0" y="498.5" font-size="13" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">+cdna4</text>
+<text x="820.0" y="514.8" font-size="13" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">scales</text>
+<rect x="920.0" y="99.7" width="120.0" height="370.3" rx="12" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="980.0" y="84.8" font-size="16" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">1.61×</text>
+<text x="980.0" y="490.4" font-size="13" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">L5</text>
+<text x="980.0" y="506.7" font-size="13" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">+autotune</text>
+<text x="120.0" y="550.7" font-size="13" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">Naive MXFP8 is slower than bf16. Routing helps small shapes; tiles/scheduling are a wash at fixed config;</text>
+<text x="120.0" y="572.7" font-size="13" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">the CDNA4 scale layout (L4) is the dominant win; per-shape autotuning (L5) recovers the fixed-config loss.</text>
+</svg>

@@ -1,0 +1,458 @@
+{
+  "M": 16640,
+  "shapes": [
+    {
+      "E": 8,
+      "M": 16640,
+      "N": 2048,
+      "K": 2048,
+      "bf16_us": 277.4,
+      "rungs": [
+        {
+          "rung": 0,
+          "name": "L0 naive",
+          "us": 195.8,
+          "tflops": 712.9,
+          "sqnr": 27.61,
+          "vs_naive": 1.0,
+          "vs_bf16": 1.417,
+          "sqnr_ok": true
+        },
+        {
+          "rung": 1,
+          "name": "L1 +fused-routing",
+          "us": 147.5,
+          "tflops": 946.3,
+          "sqnr": 27.61,
+          "vs_naive": 1.327,
+          "vs_bf16": 1.881,
+          "sqnr_ok": true
+        },
+        {
+          "rung": 2,
+          "name": "L2 +tiles/pipeline",
+          "us": 185.32,
+          "tflops": 753.2,
+          "sqnr": 27.61,
+          "vs_naive": 1.057,
+          "vs_bf16": 1.497,
+          "sqnr_ok": true
+        },
+        {
+          "rung": 3,
+          "name": "L3 +scheduling",
+          "us": 169.0,
+          "tflops": 826.0,
+          "sqnr": 27.61,
+          "vs_naive": 1.159,
+          "vs_bf16": 1.641,
+          "sqnr_ok": true
+        },
+        {
+          "rung": 4,
+          "name": "L4 +cdna4-scales",
+          "us": 127.84,
+          "tflops": 1091.9,
+          "sqnr": 27.61,
+          "vs_naive": 1.532,
+          "vs_bf16": 2.17,
+          "sqnr_ok": true
+        },
+        {
+          "rung": 5,
+          "name": "L5 +per-shape-autotune",
+          "us": 110.16,
+          "tflops": 1267.1,
+          "sqnr": 27.61,
+          "vs_naive": 1.777,
+          "vs_bf16": 2.518,
+          "sqnr_ok": true
+        }
+      ]
+    },
+    {
+      "E": 1,
+      "M": 16640,
+      "N": 8192,
+      "K": 8192,
+      "bf16_us": 1631.68,
+      "rungs": [
+        {
+          "rung": 0,
+          "name": "L0 naive",
+          "us": 2185.82,
+          "tflops": 1021.8,
+          "sqnr": 27.62,
+          "vs_naive": 1.0,
+          "vs_bf16": 0.746,
+          "sqnr_ok": true
+        },
+        {
+          "rung": 1,
+          "name": "L1 +fused-routing",
+          "us": 2134.26,
+          "tflops": 1046.4,
+          "sqnr": 27.62,
+          "vs_naive": 1.024,
+          "vs_bf16": 0.765,
+          "sqnr_ok": true
+        },
+        {
+          "rung": 2,
+          "name": "L2 +tiles/pipeline",
+          "us": 1878.94,
+          "tflops": 1188.6,
+          "sqnr": 27.62,
+          "vs_naive": 1.163,
+          "vs_bf16": 0.868,
+          "sqnr_ok": true
+        },
+        {
+          "rung": 3,
+          "name": "L3 +scheduling",
+          "us": 1972.34,
+          "tflops": 1132.4,
+          "sqnr": 27.62,
+          "vs_naive": 1.108,
+          "vs_bf16": 0.827,
+          "sqnr_ok": true
+        },
+        {
+          "rung": 4,
+          "name": "L4 +cdna4-scales",
+          "us": 1169.17,
+          "tflops": 1910.2,
+          "sqnr": 27.62,
+          "vs_naive": 1.87,
+          "vs_bf16": 1.396,
+          "sqnr_ok": true
+        },
+        {
+          "rung": 5,
+          "name": "L5 +per-shape-autotune",
+          "us": 1168.69,
+          "tflops": 1911.0,
+          "sqnr": 27.62,
+          "vs_naive": 1.87,
+          "vs_bf16": 1.396,
+          "sqnr_ok": true
+        }
+      ]
+    },
+    {
+      "E": 2,
+      "M": 16640,
+      "N": 8192,
+      "K": 2048,
+      "bf16_us": 487.2,
+      "rungs": [
+        {
+          "rung": 0,
+          "name": "L0 naive",
+          "us": 511.84,
+          "tflops": 1090.8,
+          "sqnr": 27.61,
+          "vs_naive": 1.0,
+          "vs_bf16": 0.952,
+          "sqnr_ok": true
+        },
+        {
+          "rung": 1,
+          "name": "L1 +fused-routing",
+          "us": 469.49,
+          "tflops": 1189.3,
+          "sqnr": 27.61,
+          "vs_naive": 1.09,
+          "vs_bf16": 1.038,
+          "sqnr_ok": true
+        },
+        {
+          "rung": 2,
+          "name": "L2 +tiles/pipeline",
+          "us": 568.21,
+          "tflops": 982.6,
+          "sqnr": 27.61,
+          "vs_naive": 0.901,
+          "vs_bf16": 0.857,
+          "sqnr_ok": true
+        },
+        {
+          "rung": 3,
+          "name": "L3 +scheduling",
+          "us": 532.15,
+          "tflops": 1049.2,
+          "sqnr": 27.61,
+          "vs_naive": 0.962,
+          "vs_bf16": 0.916,
+          "sqnr_ok": true
+        },
+        {
+          "rung": 4,
+          "name": "L4 +cdna4-scales",
+          "us": 379.2,
+          "tflops": 1472.4,
+          "sqnr": 27.61,
+          "vs_naive": 1.35,
+          "vs_bf16": 1.285,
+          "sqnr_ok": true
+        },
+        {
+          "rung": 5,
+          "name": "L5 +per-shape-autotune",
+          "us": 356.26,
+          "tflops": 1567.2,
+          "sqnr": 27.61,
+          "vs_naive": 1.437,
+          "vs_bf16": 1.368,
+          "sqnr_ok": true
+        }
+      ]
+    },
+    {
+      "E": 4,
+      "M": 16640,
+      "N": 5120,
+      "K": 5120,
+      "bf16_us": 736.43,
+      "rungs": [
+        {
+          "rung": 0,
+          "name": "L0 naive",
+          "us": 889.31,
+          "tflops": 981.0,
+          "sqnr": 27.62,
+          "vs_naive": 1.0,
+          "vs_bf16": 0.828,
+          "sqnr_ok": true
+        },
+        {
+          "rung": 1,
+          "name": "L1 +fused-routing",
+          "us": 842.45,
+          "tflops": 1035.6,
+          "sqnr": 27.62,
+          "vs_naive": 1.056,
+          "vs_bf16": 0.874,
+          "sqnr_ok": true
+        },
+        {
+          "rung": 2,
+          "name": "L2 +tiles/pipeline",
+          "us": 846.13,
+          "tflops": 1031.1,
+          "sqnr": 27.62,
+          "vs_naive": 1.051,
+          "vs_bf16": 0.87,
+          "sqnr_ok": true
+        },
+        {
+          "rung": 3,
+          "name": "L3 +scheduling",
+          "us": 871.07,
+          "tflops": 1001.5,
+          "sqnr": 27.62,
+          "vs_naive": 1.021,
+          "vs_bf16": 0.845,
+          "sqnr_ok": true
+        },
+        {
+          "rung": 4,
+          "name": "L4 +cdna4-scales",
+          "us": 522.93,
+          "tflops": 1668.3,
+          "sqnr": 27.62,
+          "vs_naive": 1.701,
+          "vs_bf16": 1.408,
+          "sqnr_ok": true
+        },
+        {
+          "rung": 5,
+          "name": "L5 +per-shape-autotune",
+          "us": 511.85,
+          "tflops": 1704.4,
+          "sqnr": 27.62,
+          "vs_naive": 1.737,
+          "vs_bf16": 1.439,
+          "sqnr_ok": true
+        }
+      ]
+    },
+    {
+      "E": 8,
+      "M": 16640,
+      "N": 5120,
+      "K": 8192,
+      "bf16_us": 1311.13,
+      "rungs": [
+        {
+          "rung": 0,
+          "name": "L0 naive",
+          "us": 1406.66,
+          "tflops": 992.3,
+          "sqnr": 27.62,
+          "vs_naive": 1.0,
+          "vs_bf16": 0.932,
+          "sqnr_ok": true
+        },
+        {
+          "rung": 1,
+          "name": "L1 +fused-routing",
+          "us": 1358.59,
+          "tflops": 1027.4,
+          "sqnr": 27.62,
+          "vs_naive": 1.035,
+          "vs_bf16": 0.965,
+          "sqnr_ok": true
+        },
+        {
+          "rung": 2,
+          "name": "L2 +tiles/pipeline",
+          "us": 1333.61,
+          "tflops": 1046.7,
+          "sqnr": 27.62,
+          "vs_naive": 1.055,
+          "vs_bf16": 0.983,
+          "sqnr_ok": true
+        },
+        {
+          "rung": 3,
+          "name": "L3 +scheduling",
+          "us": 1359.83,
+          "tflops": 1026.5,
+          "sqnr": 27.62,
+          "vs_naive": 1.034,
+          "vs_bf16": 0.964,
+          "sqnr_ok": true
+        },
+        {
+          "rung": 4,
+          "name": "L4 +cdna4-scales",
+          "us": 806.85,
+          "tflops": 1730.0,
+          "sqnr": 27.62,
+          "vs_naive": 1.743,
+          "vs_bf16": 1.625,
+          "sqnr_ok": true
+        },
+        {
+          "rung": 5,
+          "name": "L5 +per-shape-autotune",
+          "us": 808.25,
+          "tflops": 1727.0,
+          "sqnr": 27.62,
+          "vs_naive": 1.74,
+          "vs_bf16": 1.622,
+          "sqnr_ok": true
+        }
+      ]
+    },
+    {
+      "E": 1,
+      "M": 16640,
+      "N": 2048,
+      "K": 2048,
+      "bf16_us": 154.84,
+      "rungs": [
+        {
+          "rung": 0,
+          "name": "L0 naive",
+          "us": 185.56,
+          "tflops": 752.2,
+          "sqnr": 27.61,
+          "vs_naive": 1.0,
+          "vs_bf16": 0.834,
+          "sqnr_ok": true
+        },
+        {
+          "rung": 1,
+          "name": "L1 +fused-routing",
+          "us": 138.0,
+          "tflops": 1011.5,
+          "sqnr": 27.61,
+          "vs_naive": 1.345,
+          "vs_bf16": 1.122,
+          "sqnr_ok": true
+        },
+        {
+          "rung": 2,
+          "name": "L2 +tiles/pipeline",
+          "us": 175.48,
+          "tflops": 795.4,
+          "sqnr": 27.61,
+          "vs_naive": 1.057,
+          "vs_bf16": 0.882,
+          "sqnr_ok": true
+        },
+        {
+          "rung": 3,
+          "name": "L3 +scheduling",
+          "us": 146.68,
+          "tflops": 951.6,
+          "sqnr": 27.61,
+          "vs_naive": 1.265,
+          "vs_bf16": 1.056,
+          "sqnr_ok": true
+        },
+        {
+          "rung": 4,
+          "name": "L4 +cdna4-scales",
+          "us": 121.16,
+          "tflops": 1152.1,
+          "sqnr": 27.61,
+          "vs_naive": 1.532,
+          "vs_bf16": 1.278,
+          "sqnr_ok": true
+        },
+        {
+          "rung": 5,
+          "name": "L5 +per-shape-autotune",
+          "us": 98.2,
+          "tflops": 1421.4,
+          "sqnr": 27.61,
+          "vs_naive": 1.89,
+          "vs_bf16": 1.577,
+          "sqnr_ok": true
+        }
+      ]
+    }
+  ],
+  "geomean": [
+    {
+      "rung": 0,
+      "name": "L0 naive",
+      "geomean_vs_naive": 1.0,
+      "geomean_vs_bf16": 0.93
+    },
+    {
+      "rung": 1,
+      "name": "L1 +fused-routing",
+      "geomean_vs_naive": 1.138,
+      "geomean_vs_bf16": 1.059
+    },
+    {
+      "rung": 2,
+      "name": "L2 +tiles/pipeline",
+      "geomean_vs_naive": 1.044,
+      "geomean_vs_bf16": 0.971
+    },
+    {
+      "rung": 3,
+      "name": "L3 +scheduling",
+      "geomean_vs_naive": 1.087,
+      "geomean_vs_bf16": 1.011
+    },
+    {
+      "rung": 4,
+      "name": "L4 +cdna4-scales",
+      "geomean_vs_naive": 1.612,
+      "geomean_vs_bf16": 1.5
+    },
+    {
+      "rung": 5,
+      "name": "L5 +per-shape-autotune",
+      "geomean_vs_naive": 1.735,
+      "geomean_vs_bf16": 1.614
+    }
+  ],
+  "note": "representative 6-shape subset, MI355X"
+}

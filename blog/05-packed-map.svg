@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="984" height="479" viewBox="16.0 -4.0 984.0 479.2" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+<rect x="16.0" y="-4.0" width="984.0" height="479.2" fill="#ffffff"/>
+<text x="40.0" y="43.0" font-size="28" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#c41e3a" text-anchor="start">L1 detail — Packed expert→tile map</text>
+<text x="40.0" y="71.5" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">The router emits one int32 per tile; the GEMM decodes its expert + row-block with a load and two bit-ops.</text>
+<rect x="60.0" y="120.0" width="300.0" height="54.0" rx="12" fill="#d0bfff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="210.0" y="150.3" font-size="17" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">block_id  &lt;&lt;  16</text>
+<rect x="360.0" y="120.0" width="300.0" height="54.0" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="510.0" y="150.3" font-size="17" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">expt_id  &amp;  0xFFFF</text>
+<rect x="680.0" y="120.0" width="200.0" height="54.0" rx="12" fill="#ffc9c9" stroke="#1e1e1e" stroke-width="2"/>
+<text x="780.0" y="149.7" font-size="14" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">-1 = pad → return</text>
+<text x="60.0" y="222.3" font-size="15" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="start">Expert-sorted M chopped into BLOCK_M tiles, coloured by owning expert:</text>
+<rect x="60.0" y="250.0" width="72.0" height="48.0" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="96.0" y="268.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">E0</text>
+<text x="96.0" y="283.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">blk0</text>
+<text x="96.0" y="313.9" font-size="10" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="middle">pid0</text>
+<rect x="138.0" y="250.0" width="72.0" height="48.0" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="174.0" y="268.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">E0</text>
+<text x="174.0" y="283.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">blk1</text>
+<text x="174.0" y="313.9" font-size="10" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="middle">pid1</text>
+<rect x="216.0" y="250.0" width="72.0" height="48.0" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="252.0" y="268.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">E0</text>
+<text x="252.0" y="283.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">blk2</text>
+<text x="252.0" y="313.9" font-size="10" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="middle">pid2</text>
+<rect x="310.0" y="250.0" width="72.0" height="48.0" rx="12" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="2"/>
+<text x="346.0" y="268.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">E1</text>
+<text x="346.0" y="283.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">blk0</text>
+<text x="346.0" y="313.9" font-size="10" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="middle">pid3</text>
+<rect x="388.0" y="250.0" width="72.0" height="48.0" rx="12" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="2"/>
+<text x="424.0" y="268.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">E1</text>
+<text x="424.0" y="283.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">blk1</text>
+<text x="424.0" y="313.9" font-size="10" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="middle">pid4</text>
+<rect x="482.0" y="250.0" width="72.0" height="48.0" rx="12" fill="#ffec99" stroke="#1e1e1e" stroke-width="2"/>
+<text x="518.0" y="268.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">E2</text>
+<text x="518.0" y="283.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">blk0</text>
+<text x="518.0" y="313.9" font-size="10" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="middle">pid5</text>
+<rect x="560.0" y="250.0" width="72.0" height="48.0" rx="12" fill="#ffec99" stroke="#1e1e1e" stroke-width="2"/>
+<text x="596.0" y="268.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">E2</text>
+<text x="596.0" y="283.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">blk1</text>
+<text x="596.0" y="313.9" font-size="10" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="middle">pid6</text>
+<rect x="638.0" y="250.0" width="72.0" height="48.0" rx="12" fill="#ffec99" stroke="#1e1e1e" stroke-width="2"/>
+<text x="674.0" y="268.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">E2</text>
+<text x="674.0" y="283.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">blk2</text>
+<text x="674.0" y="313.9" font-size="10" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="middle">pid7</text>
+<rect x="716.0" y="250.0" width="72.0" height="48.0" rx="12" fill="#ffec99" stroke="#1e1e1e" stroke-width="2"/>
+<text x="752.0" y="268.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">E2</text>
+<text x="752.0" y="283.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">blk3</text>
+<text x="752.0" y="313.9" font-size="10" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="middle">pid8</text>
+<rect x="810.0" y="250.0" width="72.0" height="48.0" rx="12" fill="#ffd8a8" stroke="#1e1e1e" stroke-width="2"/>
+<text x="846.0" y="268.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">E3</text>
+<text x="846.0" y="283.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">blk0</text>
+<text x="846.0" y="313.9" font-size="10" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="middle">pid9</text>
+<rect x="904.0" y="250.0" width="72.0" height="48.0" rx="12" fill="#ffc9c9" stroke="#1e1e1e" stroke-width="2"/>
+<text x="940.0" y="268.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">PAD</text>
+<text x="940.0" y="283.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">-1</text>
+<rect x="60.0" y="360.0" width="900.0" height="56.0" rx="12" fill="#e9ecef" stroke="#1e1e1e" stroke-width="2"/>
+<text x="510.0" y="382.0" font-size="14" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">expt_data = tl.load(ExptData + pid_m)</text>
+<text x="510.0" y="399.5" font-size="14" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">if expt_data == -1: return    # else: expt_id = expt_data &amp; 0xFFFF ; block_id = expt_data &gt;&gt; 16</text>
+<text x="60.0" y="445.7" font-size="13" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">No binary search, no per-tile expert scan in the hot loop — one coalesced int32 read.</text>
+</svg>

@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1108" height="569" viewBox="16.0 -4.0 1108.0 569.2" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+<rect x="16.0" y="-4.0" width="1108.0" height="569.2" fill="#ffffff"/>
+<text x="40.0" y="43.0" font-size="28" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#c41e3a" text-anchor="start">How the e8m0 scale is computed (FLOOR mode)</text>
+<text x="40.0" y="71.5" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">torchao to_mx FLOOR mode — extract the power-of-two exponent straight from the fp32 bit pattern.</text>
+<rect x="60.0" y="130.0" width="200.0" height="70.0" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="160.0" y="159.4" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">block of 32</text>
+<text x="160.0" y="175.7" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">hp values</text>
+<polyline points="260.0,165.0 282.0,165.0" fill="none" stroke="#1e1e1e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="282.0" y1="165.0" x2="272.3" y2="159.8" stroke="#1e1e1e" stroke-width="2" stroke-linecap="round"/>
+<line x1="282.0" y1="165.0" x2="272.3" y2="170.2" stroke="#1e1e1e" stroke-width="2" stroke-linecap="round"/>
+<rect x="282.0" y="130.0" width="200.0" height="70.0" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="382.0" y="159.4" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">amax =</text>
+<text x="382.0" y="175.7" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">max|x|</text>
+<polyline points="482.0,165.0 504.0,165.0" fill="none" stroke="#1e1e1e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="504.0" y1="165.0" x2="494.3" y2="159.8" stroke="#1e1e1e" stroke-width="2" stroke-linecap="round"/>
+<line x1="504.0" y1="165.0" x2="494.3" y2="170.2" stroke="#1e1e1e" stroke-width="2" stroke-linecap="round"/>
+<rect x="504.0" y="130.0" width="200.0" height="70.0" rx="12" fill="#d0bfff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="604.0" y="159.4" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">e = floor(log2(amax))</text>
+<text x="604.0" y="175.7" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">via (bits&gt;&gt;23 &amp; 0xFF) - 127</text>
+<polyline points="704.0,165.0 726.0,165.0" fill="none" stroke="#1e1e1e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="726.0" y1="165.0" x2="716.3" y2="159.8" stroke="#1e1e1e" stroke-width="2" stroke-linecap="round"/>
+<line x1="726.0" y1="165.0" x2="716.3" y2="170.2" stroke="#1e1e1e" stroke-width="2" stroke-linecap="round"/>
+<polyline points="160.0,200.0 160.0,222.0" fill="none" stroke="#1e1e1e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="160.0" y1="222.0" x2="165.2" y2="212.3" stroke="#1e1e1e" stroke-width="2" stroke-linecap="round"/>
+<line x1="160.0" y1="222.0" x2="154.8" y2="212.3" stroke="#1e1e1e" stroke-width="2" stroke-linecap="round"/>
+<rect x="60.0" y="260.0" width="200.0" height="70.0" rx="12" fill="#d0bfff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="160.0" y="289.4" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">e8m0 = e - 8</text>
+<text x="160.0" y="305.7" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">(8 = floor(log2(448)))</text>
+<polyline points="260.0,295.0 282.0,295.0" fill="none" stroke="#1e1e1e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="282.0" y1="295.0" x2="272.3" y2="289.8" stroke="#1e1e1e" stroke-width="2" stroke-linecap="round"/>
+<line x1="282.0" y1="295.0" x2="272.3" y2="300.2" stroke="#1e1e1e" stroke-width="2" stroke-linecap="round"/>
+<rect x="282.0" y="260.0" width="200.0" height="70.0" rx="12" fill="#ffec99" stroke="#1e1e1e" stroke-width="2"/>
+<text x="382.0" y="289.4" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">store u8 =</text>
+<text x="382.0" y="305.7" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">clamp(e8m0 + 127, 0, 254)</text>
+<polyline points="40.0,400.0 1100.0,400.0" fill="none" stroke="#e9ecef" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,6"/>
+<text x="60.0" y="433.1" font-size="16" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#2f9e44" text-anchor="start">Dequant / quantize back:</text>
+<rect x="60.0" y="455.0" width="300.0" height="56.0" rx="12" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="2"/>
+<text x="210.0" y="485.9" font-size="15" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">scale_f32 = 2^(u8 - 127)</text>
+<polyline points="360.0,483.0 390.0,483.0" fill="none" stroke="#1e1e1e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="390.0" y1="483.0" x2="380.3" y2="477.8" stroke="#1e1e1e" stroke-width="2" stroke-linecap="round"/>
+<line x1="390.0" y1="483.0" x2="380.3" y2="488.2" stroke="#1e1e1e" stroke-width="2" stroke-linecap="round"/>
+<rect x="400.0" y="455.0" width="420.0" height="56.0" rx="12" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="2"/>
+<text x="610.0" y="485.7" font-size="14" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">q = clamp(x / scale_f32, ±448) → e4m3</text>
+<text x="60.0" y="535.7" font-size="13" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">Power-of-two scale → exact, cheap (a bit-shift on the exponent); no per-element fp multiply to undo.</text>
+</svg>

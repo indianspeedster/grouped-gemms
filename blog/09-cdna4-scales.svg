@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1088" height="478" viewBox="16.0 -4.0 1088.0 478.0" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+<rect x="16.0" y="-4.0" width="1088.0" height="478.0" fill="#ffffff"/>
+<text x="40.0" y="43.0" font-size="28" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#c41e3a" text-anchor="start">L4 — CDNA4-native scale layout  (the big AMD win)</text>
+<text x="40.0" y="71.5" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">Feed v_mfma_scale_f32_16x16x128 its scales pre-shuffled → kill the per-K-iter permute chain. 0.97× → 1.50×.</text>
+<text x="60.0" y="122.3" font-size="15" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#c41e3a" text-anchor="start">BEFORE · #blocked → #linear1 lowering (every K iteration)</text>
+<rect x="60.0" y="145.0" width="180.0" height="48.0" rx="12" fill="#ffffff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="150.0" y="163.8" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">scales (M, K/32)</text>
+<text x="150.0" y="178.8" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">row-major</text>
+<polyline points="240.0,169.0 266.0,169.0" fill="none" stroke="#868e96" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="266.0" y1="169.0" x2="256.3" y2="163.8" stroke="#868e96" stroke-width="2" stroke-linecap="round"/>
+<line x1="266.0" y1="169.0" x2="256.3" y2="174.2" stroke="#868e96" stroke-width="2" stroke-linecap="round"/>
+<rect x="280.0" y="145.0" width="150.0" height="48.0" rx="12" fill="#ffc9c9" stroke="#1e1e1e" stroke-width="2"/>
+<text x="355.0" y="171.3" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">6 × ds_read_u8</text>
+<polyline points="430.0,169.0 452.0,169.0" fill="none" stroke="#868e96" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="452.0" y1="169.0" x2="442.3" y2="163.8" stroke="#868e96" stroke-width="2" stroke-linecap="round"/>
+<line x1="452.0" y1="169.0" x2="442.3" y2="174.2" stroke="#868e96" stroke-width="2" stroke-linecap="round"/>
+<rect x="452.0" y="145.0" width="150.0" height="48.0" rx="12" fill="#ffc9c9" stroke="#1e1e1e" stroke-width="2"/>
+<text x="527.0" y="171.3" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">3 × v_perm_b32</text>
+<polyline points="602.0,169.0 624.0,169.0" fill="none" stroke="#868e96" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="624.0" y1="169.0" x2="614.3" y2="163.8" stroke="#868e96" stroke-width="2" stroke-linecap="round"/>
+<line x1="624.0" y1="169.0" x2="614.3" y2="174.2" stroke="#868e96" stroke-width="2" stroke-linecap="round"/>
+<rect x="624.0" y="145.0" width="150.0" height="48.0" rx="12" fill="#e9ecef" stroke="#1e1e1e" stroke-width="2"/>
+<text x="699.0" y="163.8" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">MFMA scale</text>
+<text x="699.0" y="178.8" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">operand</text>
+<polyline points="40.0,225.0 1080.0,225.0" fill="none" stroke="#e9ecef" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,6"/>
+<text x="60.0" y="257.3" font-size="15" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#2f9e44" text-anchor="start">AFTER · host pre-shuffle once, in-kernel reshape folds away</text>
+<rect x="60.0" y="280.0" width="220.0" height="56.0" rx="12" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="2"/>
+<text x="170.0" y="302.8" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">_shuffle_*_scales_cdna4</text>
+<text x="170.0" y="317.8" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">(host, once)</text>
+<polyline points="280.0,308.0 314.0,308.0" fill="none" stroke="#1e1e1e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="314.0" y1="308.0" x2="304.3" y2="302.8" stroke="#1e1e1e" stroke-width="2" stroke-linecap="round"/>
+<line x1="314.0" y1="308.0" x2="304.3" y2="313.2" stroke="#1e1e1e" stroke-width="2" stroke-linecap="round"/>
+<rect x="324.0" y="280.0" width="240.0" height="56.0" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="444.0" y="302.4" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">scales already in</text>
+<text x="444.0" y="318.7" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">MFMA-native order</text>
+<polyline points="564.0,308.0 598.0,308.0" fill="none" stroke="#1e1e1e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="598.0" y1="308.0" x2="588.3" y2="302.8" stroke="#1e1e1e" stroke-width="2" stroke-linecap="round"/>
+<line x1="598.0" y1="308.0" x2="588.3" y2="313.2" stroke="#1e1e1e" stroke-width="2" stroke-linecap="round"/>
+<rect x="608.0" y="280.0" width="230.0" height="56.0" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="723.0" y="302.4" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">1 coalesced load →</text>
+<text x="723.0" y="318.7" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">tl.dot_scaled</text>
+<rect x="60.0" y="370.0" width="300.0" height="80.0" rx="12" fill="#b2f2bb" stroke="#2f9e44" stroke-width="2"/>
+<text x="210.0" y="397.3" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">in-kernel _unswizzle is a pure</text>
+<text x="210.0" y="412.3" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">tl.reshape/permute → compiles to</text>
+<text x="210.0" y="427.3" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">v_perm_b32 count = 0 (checked in ISA)</text>
+<rect x="390.0" y="370.0" width="300.0" height="80.0" rx="12" fill="#e9ecef" stroke="#1e1e1e" stroke-width="2"/>
+<text x="540.0" y="397.3" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">gate: BLOCK_K≥256 &amp; K%256==0</text>
+<text x="540.0" y="412.3" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">&amp; N%32==0 &amp; M%32==0</text>
+<text x="540.0" y="427.3" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">(needs the L2 big-tile rung first)</text>
+<rect x="720.0" y="370.0" width="320.0" height="80.0" rx="12" fill="#ffec99" stroke="#e8590c" stroke-width="2"/>
+<text x="880.0" y="395.2" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">nonkdim 16 vs 32 selectable</text>
+<text x="880.0" y="412.7" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">per shape (nk32 wins 27/36)</text>
+<text x="880.0" y="430.2" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">DOMINANT optimization</text>
+</svg>

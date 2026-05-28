@@ -1,228 +1,265 @@
-# Squeezing 1.49× out of an MXFP8 Grouped GEMM on AMD MI355X
+# From 0.93× to 1.61×: Building an MXFP8 Grouped GEMM on AMD MI355X
 
-*How we tuned a standalone Triton grouped-GEMM kernel for the Llama4 MoE forward
-(and dgrad) pass on gfx950 / CDNA4 — optimization by optimization.*
+*A standalone Triton kernel for the Llama4 MoE forward (and dgrad) pass on
+gfx950 / CDNA4 — built from a naive baseline, then optimized one measurable rung
+at a time.*
 
 ---
 
 ## TL;DR
 
-`triton_mxfp8_grouped_mm` is a persistent grouped GEMM that computes
-`out[g] = A[group_g] @ B[g]^T` per expert, consuming MXFP8 (e4m3 data + per-32
-e8m0 scales) directly through `tl.dot_scaled`. On a 36-shape Llama4 sweep
-(`E ∈ {1,2,4,8}`, `M = 16640`, `N,K ∈ {2048,5120,8192}`) on a single MI355X it
-reaches a **geomean 1.49× over bf16** (`torch._grouped_mm`), peaking near
-**1924 TFLOPS**, while holding **27.6 dB SQNR** on every shape.
+We start with a **correct but naive** MXFP8 grouped GEMM and find it's actually
+**slower than bf16** (0.93× geomean). Then we climb a ladder of optimizations,
+measuring each step on an MI355X, and land at **1.61× over bf16** on a
+representative set of Llama4 shapes (peak ~1910 TFLOPS), holding **27.6 dB
+SQNR** the whole way.
 
-The wins came from seven distinct layers. Each section below embeds a rendered
-**SVG** (shows inline on GitHub / any Markdown renderer) and ships the matching
-**editable Excalidraw scene** (`blog/NN-*.excalidraw`) — open it at
-[excalidraw.com](https://excalidraw.com) (*File → Open*) to tweak, or re-run
-`python blog/gen_diagrams.py` to regenerate both.
+The single dominant win is AMD-specific: a **CDNA4-native scale layout** that
+removes a per-K-iteration address-shuffle the compiler would otherwise emit on
+the MFMA scale loads. It alone moves the geomean from 0.97× to 1.50×.
 
-> **Diagram index**
-> | # | Optimization | Scene file |
-> |---|---|---|
-> | 1 | Sync-free routing build | `01-routing-build.excalidraw` |
-> | 2 | Packed expert→tile map | `02-packed-expert-map.excalidraw` |
-> | 3 | GROUP_M L2 reuse | `03-group-m-l2-reuse.excalidraw` |
-> | 4 | XCD swizzle | `04-xcd-swizzle.excalidraw` |
-> | 5 | CDNA4 pre-shuffled scales | `05-cdna4-scale-shuffle.excalidraw` |
-> | 6 | dot_scaled K-loop + EVEN_K | `06-dot-scaled-kloop.excalidraw` |
-> | 7 | Per-shape autotuning | `07-per-shape-autotune.excalidraw` |
+Every number below is reproducible: `blog/ladder.py` is one parameterized kernel
+with a `rung` knob (0–5), and `blog/bench_ladder.py` runs the sweep one-shape-
+per-GPU and writes `blog/ladder_results.json`.
 
----
+| Rung | What it adds | Geomean vs bf16 |
+|---|---|---:|
+| L0 | naive baseline | 0.93× |
+| L1 | + sync-free routing | 1.06× |
+| L2 | + bigger tiles & pipeline | 0.97× |
+| L3 | + GROUP_M / XCD scheduling | 1.01× |
+| **L4** | **+ CDNA4-native scale layout** | **1.50×** |
+| L5 | + per-shape autotuning | **1.61×** |
 
-## The problem
-
-An MoE layer routes a jagged number of tokens to each of `E` experts. The
-forward GEMM is therefore not one matmul but a *grouped* one: a variable-height
-`A` slice per expert multiplied by that expert's weight matrix. Two things make
-this hard to run fast on a GPU:
-
-1. **Routing.** You need to translate `group_end_offsets` (cumulative token
-   counts) into "which expert and which row-block does program *p* compute?"
-   without stalling the GPU on host-side tensor ops.
-2. **MXFP8 scales.** Every 32 elements along K carry an e8m0 scale byte. Those
-   scales have to reach the CDNA4 `v_mfma_scale_f32_16x16x128_f8f6f4`
-   instruction in *exactly* the layout it wants, or the compiler emits an
-   address-shuffle chain on every K iteration.
-
-Everything below is about removing overhead from one of those two paths, or
-about feeding the MFMA units more efficiently.
+> Diagrams are SVGs rendered from editable Excalidraw scenes
+> (`blog/NN-*.excalidraw`); regenerate with `python blog/gen_diagrams.py`.
 
 ---
 
-## Optimization 1 — Sync-free routing build
+## 1. What is a grouped GEMM?
 
-**Scene:** `01-routing-build.excalidraw`
+![02-grouped-gemm.svg](02-grouped-gemm.svg)
 
-![01-routing-build.svg](01-routing-build.svg)
-
-The naive way to turn `group_end_offsets` into the per-tile routing metadata is a
-chain of host-side tensor ops: `cat → diff → cumsum → arange → searchsorted →
-clamp → shift → where`. That's ~8 kernel launches and host↔device syncs,
-roughly **30–40 µs** of launch overhead that lands squarely on the critical path
-and breaks `torch.compile` graphs.
-
-We replace the whole chain with **one** Triton kernel, `_expt_data_kernel`,
-launched with `num_warps=1`. It walks the `E` experts in a `tl.static_range`,
-keeps a running prefix-sum in registers, and writes all four routing tensors in a
-single pass:
-
-- `ExptHist` — tokens per expert
-- `ExptOffs` — start offset per expert (expert-sorted)
-- `ExptOffsSum` — total padded tile-block count
-- `ExptData` — the packed block→expert map (see Opt-2)
-
-Result: **~2–3 µs, one launch, no host sync, torch.compile-clean** — a 10–15×
-cut in routing overhead. The diagram shows the op-chain collapsing into a single
-green box fanning out to the four output tensors.
-
----
-
-## Optimization 2 — Packed expert→tile routing
-
-**Scene:** `02-packed-expert-map.excalidraw`
-
-![02-packed-expert-map.svg](02-packed-expert-map.svg)
-
-Inside the GEMM, every program needs to know *which expert* and *which row-block*
-it owns. Doing a binary search or expert scan per tile would burn the savings
-from Opt-1. Instead we pack both numbers into a single `int32` per tile:
+A Mixture-of-Experts layer routes a **jagged**, data-dependent number of tokens
+to each of `E` experts. So the core op isn't one matmul — it's `E` of them, each
+a different-height slice of the activation matrix `A` times that expert's weight
+matrix `B[g]`:
 
 ```
-value = (block_id << 16) | expt_id     # -1 for a padding tile
+out[s_g : e_g]  =  A[s_g : e_g]  @  B[g]^T      for each expert g
 ```
 
-The GEMM kernel does exactly one load and two bit-ops:
+The per-expert row counts are only known at runtime, passed as
+`group_end_offsets` (cumulative token counts). The kernel's first job — before
+any math — is to figure out, for each output tile, **which expert it belongs
+to**. Getting that routing cheap is the whole first half of the battle; the
+second half is feeding AMD's matrix units efficiently.
+
+This same `A @ B^T` kernel serves both the MoE **forward** pass and the **dgrad**
+(input-gradient) pass.
+
+---
+
+## 2. What is MXFP8?
+
+![00-mxfp8-block.svg](00-mxfp8-block.svg)
+
+MXFP8 is an OCP **microscaling** format. Instead of one scale for a whole tensor
+(tensorwise) or per row (rowwise), it uses **one scale per contiguous block of 32
+elements**:
+
+- **Data**: each element is `float8_e4m3fn` — 1 sign, 4 exponent, 3 mantissa
+  bits, max magnitude **448**.
+- **Scale**: each 32-element block carries one **e8m0** byte — a pure 8-bit
+  exponent, i.e. a power-of-two scale `2^k`. No mantissa, no sign.
+
+So a `(M, K)` activation tensor becomes a `(M, K)` fp8 data array plus a
+`(M, K/32)` scale array. Because the block size is 32, the per-expert offsets fed
+to the kernel must be multiples of 32.
+
+The fine granularity is what buys MXFP8 its accuracy: a single outlier only
+inflates the scale of its own 32-wide block, not the whole row or tensor.
+
+---
+
+## 3. How the scale is computed
+
+![01-scale-calc.svg](01-scale-calc.svg)
+
+We match torchao's **FLOOR** scaling mode (`to_mx`). For each 32-element block:
+
+1. `amax = max(|x|)` over the block.
+2. Extract the floor-log2 exponent **straight from the fp32 bit pattern** —
+   no `log`: `e = ((bits >> 23) & 0xFF) - 127`.
+3. Subtract the e4m3 headroom: `e8m0_unbiased = e - 8`, where
+   `8 = floor(log2(448))` is the largest power of two e4m3 can represent.
+4. Store the biased byte: `u8 = clamp(e8m0_unbiased + 127, 0, 254)`.
+
+To quantize, dequantize, and feed the MFMA, the scale is just
+`scale_f32 = 2^(u8 - 127)`, and `q = clamp(x / scale_f32, ±448)` cast to e4m3.
+Because the scale is always a power of two, applying or undoing it is exact and
+cheap — a bit-shift on the exponent, not a floating-point multiply. That's the
+property the CDNA4 MFMA scale instruction is built around, and it's central to
+the L4 optimization.
+
+---
+
+## 4. Where the AMD-specific work lives
+
+On CDNA4 (gfx950 / MI350+), `tl.dot_scaled` lowers to
+`v_mfma_scale_f32_16x16x128_f8f6f4` — a matrix instruction that takes the e8m0
+scales as a *native operand*. Two things then matter enormously:
+
+1. **The scale operand layout.** The MFMA wants its scales in a specific
+   swizzled register order. Hand it the natural row-major `(M, K/32)` layout and
+   the Triton lowering inserts an address-shuffle chain (`ds_read_u8` +
+   `v_perm_b32`) on **every K iteration** — dead weight in the hottest loop.
+2. **The 8-XCD topology.** An MI355X is eight accelerator complex dies, each with
+   its own L2 slice. Scheduling that ignores XCD boundaries throws away locality.
+
+The rest of the post builds a kernel that gets both right. We'll measure each
+step against the same bf16 baseline (`torch._grouped_mm`) on six representative
+Llama4 shapes spanning the regimes (small/large K, 1–8 experts).
+
+---
+
+## 5. The naive baseline (L0) — 0.93×
+
+![03-naive-kernel.svg](03-naive-kernel.svg)
+
+The naive kernel is *correct* and does the obvious thing:
+
+- routing metadata built on the host with a chain of torch ops,
+- one output tile per program, row-major (`GROUP_M=1`, no XCD swizzle),
+- plain row-major scales (re-shuffled inside the kernel by the lowering),
+- a small `64×128` tile, single-stage (no software pipelining).
+
+Measured geomean across the six shapes: **0.93× bf16** — MXFP8 is *losing* to
+bf16. The MFMA units are starved: tiny tiles give poor arithmetic intensity, and
+the scale-load shuffle eats the inner loop. Every design choice above is a rung
+to climb.
+
+---
+
+## 6. L1 — Sync-free routing (+14% vs naive)
+
+![04-fused-routing.svg](04-fused-routing.svg)
+
+The host-side routing is a chain of `cat → diff → cumsum → arange →
+searchsorted → clamp → shift → where`: ~8 kernel launches and host↔device syncs,
+roughly **30–40 µs** of overhead that also breaks `torch.compile` graphs.
+
+We replace the whole chain with **one** Triton kernel (`_expt_data_kernel`,
+`num_warps=1`) that walks the experts in a `tl.static_range`, keeps a running
+prefix-sum in registers, and writes every routing tensor in one pass (~2–3 µs, no
+sync). The key output is a **packed map**: one `int32` per tile encoding both the
+expert and the row-block.
+
+![05-packed-map.svg](05-packed-map.svg)
 
 ```python
 expt_data = tl.load(ExptData + pid_m)
-if expt_data == -1:        # padding tile from BLOCK_M round-up → bail out
+if expt_data == -1:        # padding tile from BLOCK_M round-up → bail
     return
 expt_id  = expt_data & 0x0000FFFF
 block_id = expt_data >> 16
 ```
 
-The diagram lays out the jagged expert-sorted M dimension chopped into `BLOCK_M`
-tiles, each tile coloured by expert, with a trailing red `-1` pad tile that the
-kernel skips. No search, no scan — a single coalesced int32 read decodes the
-tile's identity.
+No binary search, no per-tile expert scan in the hot path. The win is largest
+where the kernel is short and the fixed routing cost dominates: **+33%** on
+`(8, 2048, 2048)` and **+34%** on `(1, 2048, 2048)`; on big shapes it's amortized
+to ~2%. Geomean: **0.93× → 1.06×**.
 
 ---
 
-## Optimization 3 — GROUP_M tile ordering for L2 reuse
+## 7. L2 — Bigger tiles + software pipeline (and why it's a wash)
 
-**Scene:** `03-group-m-l2-reuse.excalidraw`
+![06-tiles-pipeline.svg](06-tiles-pipeline.svg)
 
-![03-group-m-l2-reuse.svg](03-group-m-l2-reuse.svg)
+Bumping to `256×128×256` tiles with `num_stages=2` gives each program much more
+MFMA work and lets the loads of the next K-tile overlap the current MFMA.
 
-Program IDs map to `(pid_m, pid_n)` output tiles. If you iterate row-major
-(`GROUP_M = 1`), consecutive programs sweep an entire N row before advancing M —
-so the tiles running concurrently across the machine share almost no working set
-and the L2 thrashes.
+On compute-bound large shapes this helps: `(1, 8192, 8192)` goes
+1022 → 1189 TFLOPS (+16%). But on small shapes the same fixed tile *hurts* —
+`(8, 2048, 2048)` drops 946 → 753 TFLOPS (−20%), because a 256-row tile is mostly
+wasted on a short expert. Net geomean actually dips: **1.06× → 0.97×**.
 
-`_pid_grid` reorders pids into **super-blocks of `GROUP_M` rows traversed
-column-first**. Now the tiles live at any instant form a compact `GROUP_M × n`
-block that re-hits the *same* A rows and B columns out of L2. The diagram shows
-two 6×6 tile grids side by side: the naive one highlights a single thin B-column
-strip; the grouped one highlights a fat reuse block.
-
-`GROUP_M` is one of the per-shape tuned knobs (mostly 8, occasionally 4 or 16).
+This is the honest lesson of the ladder: **no single config wins everywhere.**
+That tension is exactly what L5 (autotuning) resolves.
 
 ---
 
-## Optimization 4 — XCD swizzle
+## 8. L3 — GROUP_M + XCD scheduling
 
-**Scene:** `04-xcd-swizzle.excalidraw`
+![07-group-m.svg](07-group-m.svg)
 
-![04-xcd-swizzle.svg](04-xcd-swizzle.svg)
+`GROUP_M` reorders program IDs into super-blocks traversed column-first, so the
+tiles running concurrently re-hit the same A rows and B columns out of L2 instead
+of sweeping a thin strip and thrashing.
 
-MI355X is built from **8 XCDs** (accelerator complex dies), and the hardware
-dispatches workgroups round-robin: program `p` lands on XCD `p % 8`. Each XCD has
-its own L2 slice. Without intervention, the tiles that *should* share operands
-(consecutive pids after the GROUP_M reorder) get scattered across all 8 XCDs, so
-the GROUP_M locality never materializes in any single L2.
+![08-xcd-swizzle.svg](08-xcd-swizzle.svg)
 
-`_xcd_swizzle` pre-permutes the pid so that, after the hardware's `% 8`, **each
-XCD receives a contiguous block of tiles**. The diagram contrasts the scattered
-round-robin assignment (`0,8,16…` on XCD 0) with the post-swizzle contiguous
-ranges (`0…2` on XCD 0, `3…5` on XCD 1, …). `XCD_SWIZZLE` defaults to 8 and is
-tuned down to 4 on a couple of shapes.
+But the hardware dispatches workgroups round-robin across the 8 XCDs
+(`pid % 8`), which would scatter that reuse block across all eight L2 slices.
+`_xcd_swizzle` pre-permutes the pid so each XCD instead owns a *contiguous* tile
+range, keeping the reuse inside one L2.
 
-> This scheduling trio (Opt 2–4) is adapted from AMD aiter's
-> `moe_op_gemm_a8w8`, itself derived from triton-lang's `matmul_ogs`. It is a
-> **forward-only** win: porting the same XCD/GROUP_M scheme to the wgrad
-> (`A^T @ B`) kernel roughly *halved* its throughput, so wgrad keeps a plain
-> grid.
+This trio is adapted from AMD aiter's `moe_op_gemm_a8w8` (itself from
+triton-lang's `matmul_ogs`). On these large, already compute-bound shapes the
+locality is mostly amortized, so L3 is modest: geomean **0.97× → 1.01×**. (It's a
+bigger deal on small/many-expert shapes, and — notably — it *regresses* the wgrad
+kernel, which is operand-latency-bound, so we don't use it there.)
 
 ---
 
-## Optimization 5 — CDNA4-native pre-shuffled MX scale layout
+## 9. L4 — CDNA4-native scale layout (the big win): 1.01× → 1.50×
 
-**Scene:** `05-cdna4-scale-shuffle.excalidraw`
+![09-cdna4-scales.svg](09-cdna4-scales.svg)
 
-![05-cdna4-scale-shuffle.svg](05-cdna4-scale-shuffle.svg)
+Here's the payoff. With plain row-major scales, the `#blocked → #linear1`
+lowering emits, **on every K iteration**, roughly `6× ds_read_u8 + 3×
+v_perm_b32` per scale tensor just to shuffle the e8m0 bytes into the order the
+MFMA wants.
 
-This is the CDNA4-specific win and the most subtle one. `tl.dot_scaled` lowers to
-`v_mfma_scale_f32_16x16x128_f8f6f4`, which wants its e8m0 scale operands in a
-specific swizzled register layout. If you hand it row-major `(M, K/32)` scales,
-the Triton `#blocked → #linear1` lowering inserts, **on every K iteration**, an
-address-shuffle chain: roughly **6× `ds_read_u8` + 3× `v_perm_b32`** per scale
-tensor — pure overhead in the hottest loop in the kernel.
+We pre-shuffle the scales **once, host-side** into the MFMA-native layout. The
+in-kernel `_unswizzle_*_cdna4` then becomes a pure `tl.reshape`/`tl.permute` on
+registers that the compiler folds away — we confirmed **`v_perm_b32` count = 0**
+in the AMDGCN.
 
-We pre-shuffle the scales **once, host-side** (`_shuffle_x_scales_cdna4_*` /
-`_shuffle_w_scales_cdna4_*`) into the exact MFMA-native order. The in-kernel
-`_unswizzle_*_cdna4` then becomes a pure `tl.reshape`/`tl.permute` on registers —
-which the compiler folds away. We confirmed in the AMDGCN that **`v_perm_b32`
-count drops to 0**.
+The effect is dramatic and universal: geomean **1.01× → 1.50×**, e.g.
+`(1, 8192, 8192)` jumps 1132 → 1910 TFLOPS. This is the rung that makes MXFP8
+worth it on CDNA4.
 
-Details captured in the diagram:
-- **Gate:** `BLOCK_K ≥ 256 && K%256==0 && N%32==0 && M%32==0` (`use_cdna4_scale`).
-  Llama4 shapes hit it except `(N=K=2048)`, which stays on `BLOCK_K=128`.
-- **`nonkdim` 16 vs 32:** two shuffle formulas exist. nk16 was the original
-  geomean-best; the per-shape sweep later found **nk32 wins 27/36 shapes**
-  (5–9% on K=2048), so `matrix_instr_nonkdim` is now selected per shape and the
-  matching host shuffle picked to suit.
+A couple of details:
+- **Gate:** needs `BLOCK_K ≥ 256 & K%256==0 & N%32==0 & M%32==0` — which is why
+  the big-tile rung (L2) has to come first.
+- **`nonkdim` 16 vs 32:** two shuffle formulas; nk32 wins 27/36 of the full
+  Llama4 set, selected per shape in L5.
 
----
+The inner loop itself stays lean: scales ride straight into the MFMA (no separate
+dequantize pass), and the ragged K tail is peeled so the steady-state loop is
+branch-free.
 
-## Optimization 6 — Direct `dot_scaled` K-loop with EVEN_K peel
-
-**Scene:** `06-dot-scaled-kloop.excalidraw`
-
-![06-dot-scaled-kloop.svg](06-dot-scaled-kloop.svg)
-
-Two things in the inner loop:
-
-**Scales ride into the MFMA.** Rather than dequantizing fp8→bf16 and multiplying
-by scales in a separate pass over each tile, the e8m0 bytes feed straight into
-the MFMA scale operand:
-
-```python
-acc = tl.dot_scaled(x, x_scales, "e4m3", w, w_scales, "e4m3",
-                    acc=acc, fast_math=True)
-```
-
-**EVEN_K peeling.** When `K % BLOCK_K == 0` (the common case), the main loop runs
-every iteration with no K-mask compare. When it doesn't divide evenly, we run
-`num_k_iter − 1` unmasked iterations and peel a **single** masked tail iteration
-(`offs_k < MASK_K_LIMIT`). The bounds check is paid once, not every iteration,
-keeping the steady-state loop branch-free. The diagram shows the loop body
-(load X, load W, load scales, `dot_scaled`, advance pointers) with the dashed
-loop-back arrow, and the EVEN_K decision feeding the tail.
+![10-dot-scaled-kloop.svg](10-dot-scaled-kloop.svg)
 
 ---
 
-## Optimization 7 — Per-shape autotuning
+## 10. The ladder so far
 
-**Scene:** `07-per-shape-autotune.excalidraw`
+![11-ladder-results.svg](11-ladder-results.svg)
 
-![07-per-shape-autotune.svg](07-per-shape-autotune.svg)
+Plotting the cumulative geomean makes the story obvious: routing is a cheap
+universal win, tiles/scheduling are a wash at a *fixed* config, and the CDNA4
+scale layout is the dominant lever. One thing remains — recovering the
+per-shape config loss we saw at L2.
 
-None of the above fixes a single config across shapes. We swept a
-**576-config** space per shape:
+---
+
+## 11. L5 — Per-shape autotuning → 1.61×
+
+![12-autotune.svg](12-autotune.svg)
+
+We swept a **576-config** space per shape:
 
 ```
 BLOCK_M ∈ {64,128,256}   BLOCK_N ∈ {128,256}   BLOCK_K ∈ {128,256}
@@ -230,42 +267,64 @@ GROUP_M ∈ {1,4,8}        num_warps ∈ {4,8}      num_stages ∈ {1,2}
 waves_per_eu ∈ {0,2}     matrix_instr_nonkdim ∈ {16,32}
 ```
 
-across all **36 shapes**, dispatched **one-shape-per-GPU across 8 MI355X** with a
-`ProcessPoolExecutor(8)` (each worker pinned via `CUDA/HIP_VISIBLE_DEVICES` and
-`PYTHONPATH` set so `from kernels import …` resolves). A full sweep finishes in
-**~13–18 minutes** of wall time instead of hours serial.
+across all 36 Llama4 shapes, dispatched **one shape per GPU** across 8 MI355X
+(`ProcessPoolExecutor(8)`, each worker pinned via `CUDA/HIP_VISIBLE_DEVICES`).
+A full sweep takes ~13–18 min. Winners freeze into a `_BEST_CFGS[(E,N,K)]` table
+consulted at launch by `_pick_config`, with a small/large-K fallback for unseen
+shapes, plus a few per-shape cache hints (`evict_first` on X, `.cg` on W).
 
-The winners are frozen into a `_BEST_CFGS[(E,N,K)]` table consulted at launch by
-`_pick_config`, with a small/large-K fallback heuristic for unseen shapes. On top
-of the block/warp/stage config, two cache hints are baked in per shape:
-
-- **12 shapes** get `eviction_policy="evict_first"` on the X load,
-- **4 shapes** get `cache_modifier=".cg"` on the W load.
-
-The biggest single-shape cache-hint win was **+10%** on `(1, 2048, 2048)`.
-End to end, tuning moved the geomean from **1.389× → 1.487×** over bf16
-(**+7.0%**).
+This fixes the L2 mismatch — small shapes get small tiles, large shapes get
+`256/256` + nk32 — and lifts the representative geomean **1.50× → 1.61×**.
 
 ---
 
-## What *didn't* work (and why)
+## 12. Per-shape results
 
-Worth recording the dead ends — they bound the Triton-level ceiling:
+Speedup vs bf16 at each rung (MI355X, M=16640):
+
+| E · N · K | L0 | L1 | L2 | L3 | L4 | L5 | L5 TFLOPS |
+|---|--:|--:|--:|--:|--:|--:|--:|
+| 8 · 2048 · 2048 | 1.42 | 1.88 | 1.50 | 1.64 | 2.17 | **2.52** | 1267 |
+| 1 · 2048 · 2048 | 0.83 | 1.12 | 0.88 | 1.06 | 1.28 | **1.58** | 1421 |
+| 2 · 8192 · 2048 | 0.95 | 1.04 | 0.86 | 0.92 | 1.28 | **1.37** | 1567 |
+| 4 · 5120 · 5120 | 0.83 | 0.87 | 0.87 | 0.84 | 1.41 | **1.44** | 1704 |
+| 8 · 5120 · 8192 | 0.93 | 0.96 | 0.98 | 0.96 | 1.62 | **1.62** | 1727 |
+| 1 · 8192 · 8192 | 0.75 | 0.77 | 0.87 | 0.83 | 1.40 | **1.40** | 1911 |
+| **geomean** | **0.93** | **1.06** | **0.97** | **1.01** | **1.50** | **1.61** | |
+
+SQNR is 27.6 dB at every rung and every shape — the optimizations are pure
+scheduling/layout, never accuracy trades.
+
+> This is a 6-shape representative subset chosen to span the regimes. The full
+> 36-shape production geomean (in `bench.py`) is ≈**1.49×**; the subset reads a
+> bit higher because it includes the small-K shapes where MXFP8 wins biggest.
+
+---
+
+## 13. Takeaways
+
+- **Naive MXFP8 loses to bf16** on CDNA4 — the format only pays off after the
+  hardware-specific work.
+- **One optimization dominates**: the CDNA4-native scale layout (≈ +49% geomean).
+  Everything else is single-digit to low-double-digit percent.
+- **Fixed configs can't win everywhere** — the L2 regression is real, and the
+  reason per-shape autotuning exists.
+- **Routing overhead is shape-sensitive**: huge for small/many-expert kernels,
+  invisible for large ones.
+
+### What didn't help (bounding the ceiling)
 
 | Lever | Result | Why |
 |---|---|---|
-| `num_stages=3` on K=2048 | −7% | K-loop only ~16 iters; pipeline fill/drain + LDS occupancy hit outweighs overlap |
-| `N, K` as `tl.constexpr` | **−25%** | compiler emitted worse code with literal large ints |
-| `kpack=2` | no-op | Triton-AMD silently forces 1 on gfx950 |
-| `loop_unroll_factor=2` | LDS OOM | unrolled body needs 2× LDS, past the 160 KB cap |
-| E=1 specialized path | ≈0% | per-call savings hidden under the noise floor |
+| `num_stages=3` on K=2048 | −7% | K-loop too short; fill/drain + LDS occupancy cost |
+| `N,K` as `tl.constexpr` | −25% | worse codegen with literal large ints |
+| `kpack=2` | no-op | Triton-AMD forces 1 on gfx950 |
 | XCD/GROUP_M ported to wgrad | −50% | wgrad is operand-latency-bound, not schedule-bound |
 
-The remaining gap to hipBLASLt's rowwise/tensorwise FP8 (~1.55×) is the
-per-32-block scale-load cost in the inner loop, plus a known `s_waitcnt`
-conservatism in our `release/3.7.x` Triton build. Next experiments: cherry-pick
-the token-aware wait-count fix, evaluate Gluon, and the FlyDSL raw-intrinsic path
-for the long-term ceiling.
+The remaining ~5% gap to hipBLASLt's rowwise/tensorwise FP8 is the per-32-block
+scale-load cost in the inner loop plus an `s_waitcnt` conservatism in our Triton
+build. Next: cherry-pick the token-aware wait-count fix, and a raw-intrinsic
+(FlyDSL) path for the long-term ceiling.
 
 ---
 
@@ -274,12 +333,17 @@ for the long-term ceiling.
 ```bash
 source /it-share/shekhar/mxfp8/.venv/bin/activate
 cd /it-share/shekhar/grouped-gemms
-python test_correctness.py   # SQNR vs torch._grouped_mm, 27 dB threshold
-python bench.py              # 36-shape Llama4 sweep + geomean
 
-# regenerate the diagrams
-python blog/gen_diagrams.py
+python test_correctness.py        # SQNR vs torch._grouped_mm, 27 dB threshold
+python bench.py                   # full 36-shape Llama4 sweep + geomean
+
+python blog/bench_ladder.py       # the naive→optimized ladder (this post)
+python blog/gen_diagrams.py       # regenerate the diagrams
 ```
 
-*Kernel: `kernels/forward.py`. Hardware: 8× AMD MI355X (gfx950). Software: PyTorch
-2.13 nightly (rocm7.1) · triton-rocm 3.7.0.*
+`blog/ladder.py` is the parameterized kernel (`rung` 0–5) used here; it reuses
+the production Triton kernel and host shuffles from `kernels/forward.py`
+verbatim, so the measured deltas reflect real kernel behavior.
+
+*Hardware: 8× AMD MI355X (gfx950). Software: PyTorch 2.13 nightly (rocm7.1) ·
+triton-rocm 3.7.0.*

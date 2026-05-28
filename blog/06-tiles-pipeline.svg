@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1038" height="484" viewBox="16.0 -4.0 1038.0 484.0" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+<rect x="16.0" y="-4.0" width="1038.0" height="484.0" fill="#ffffff"/>
+<text x="40.0" y="43.0" font-size="28" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#c41e3a" text-anchor="start">L2 — Bigger tiles + software pipeline</text>
+<text x="40.0" y="71.5" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">256×128×256 tiles and num_stages=2. Helps compute-bound large shapes; HURTS small ones (see L5).</text>
+<text x="60.0" y="123.1" font-size="16" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1971c2" text-anchor="start">Tile footprint</text>
+<rect x="60.0" y="145.0" width="60.0" height="120.0" rx="12" fill="#ffc9c9" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="90.0" y="282.3" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="middle">64×128</text>
+<rect x="160.0" y="145.0" width="120.0" height="120.0" rx="12" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="220.0" y="282.3" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="middle">256×128</text>
+<text x="60.0" y="314.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">more MFMA work per program →</text>
+<text x="60.0" y="329.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">better arithmetic intensity</text>
+<text x="420.0" y="122.3" font-size="15" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#2f9e44" text-anchor="start">num_stages=2: overlap load(K+1) with compute(K)</text>
+<text x="420.0" y="160.7" font-size="13" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#c41e3a" text-anchor="start">1 stage (serial):</text>
+<rect x="420.0" y="175.0" width="64.0" height="36.0" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="452.0" y="195.3" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">ld0</text>
+<rect x="486.0" y="175.0" width="64.0" height="36.0" rx="12" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="2"/>
+<text x="518.0" y="195.3" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">mma0</text>
+<rect x="552.0" y="175.0" width="64.0" height="36.0" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="584.0" y="195.3" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">ld1</text>
+<rect x="618.0" y="175.0" width="64.0" height="36.0" rx="12" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="2"/>
+<text x="650.0" y="195.3" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">mma1</text>
+<rect x="684.0" y="175.0" width="64.0" height="36.0" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="716.0" y="195.3" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">ld2</text>
+<rect x="750.0" y="175.0" width="64.0" height="36.0" rx="12" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="2"/>
+<text x="782.0" y="195.3" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">mma2</text>
+<text x="420.0" y="245.7" font-size="13" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#2f9e44" text-anchor="start">2 stages (pipelined):</text>
+<rect x="420.0" y="262.0" width="64.0" height="32.0" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="452.0" y="280.3" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">ld0</text>
+<rect x="552.0" y="262.0" width="64.0" height="32.0" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="584.0" y="280.3" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">ld1</text>
+<rect x="684.0" y="262.0" width="64.0" height="32.0" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="716.0" y="280.3" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">ld2</text>
+<rect x="486.0" y="300.0" width="64.0" height="32.0" rx="12" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="2"/>
+<text x="518.0" y="318.3" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">mma0</text>
+<rect x="618.0" y="300.0" width="64.0" height="32.0" rx="12" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="2"/>
+<text x="650.0" y="318.3" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">mma1</text>
+<rect x="750.0" y="300.0" width="64.0" height="32.0" rx="12" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="2"/>
+<text x="782.0" y="318.3" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">mma2</text>
+<text x="420.0" y="354.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">loads of the next K-tile run under the current MFMA → fewer stalls.</text>
+<rect x="60.0" y="400.0" width="970.0" height="56.0" rx="12" fill="#ffec99" stroke="#e8590c" stroke-width="2"/>
+<text x="545.0" y="422.4" font-size="13" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">Measured: large square (1·8192·8192) 1022→1189 TF (+16%); but small (8·2048·2048) 946→753 TF (−20%).</text>
+<text x="545.0" y="438.7" font-size="13" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">A single fixed tile can't be right for every shape — this is exactly what L5 (per-shape autotune) fixes.</text>
+</svg>

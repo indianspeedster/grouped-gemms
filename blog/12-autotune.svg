@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1068" height="562" viewBox="16.0 -4.0 1068.0 562.0" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+<rect x="16.0" y="-4.0" width="1068.0" height="562.0" fill="#ffffff"/>
+<text x="40.0" y="43.0" font-size="28" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#c41e3a" text-anchor="start">L5 — Per-shape autotuning  (→ 1.61×)</text>
+<text x="40.0" y="71.5" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">576 configs × 36 shapes, one shape per GPU across 8 MI355X. Frozen into _BEST_CFGS, looked up at launch.</text>
+<rect x="60.0" y="120.0" width="250.0" height="32.0" rx="12" fill="#d0bfff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="185.0" y="138.3" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">BLOCK_M ∈ {64,128,256}</text>
+<rect x="60.0" y="160.0" width="250.0" height="32.0" rx="12" fill="#d0bfff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="185.0" y="178.3" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">BLOCK_N ∈ {128,256}</text>
+<rect x="60.0" y="200.0" width="250.0" height="32.0" rx="12" fill="#d0bfff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="185.0" y="218.3" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">BLOCK_K ∈ {128,256}</text>
+<rect x="60.0" y="240.0" width="250.0" height="32.0" rx="12" fill="#d0bfff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="185.0" y="258.3" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">GROUP_M ∈ {1,4,8}</text>
+<rect x="60.0" y="280.0" width="250.0" height="32.0" rx="12" fill="#d0bfff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="185.0" y="298.3" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">num_warps ∈ {4,8}</text>
+<rect x="60.0" y="320.0" width="250.0" height="32.0" rx="12" fill="#d0bfff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="185.0" y="338.3" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">num_stages ∈ {1,2}</text>
+<rect x="60.0" y="360.0" width="250.0" height="32.0" rx="12" fill="#d0bfff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="185.0" y="378.3" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">waves_per_eu ∈ {0,2}</text>
+<rect x="60.0" y="400.0" width="250.0" height="32.0" rx="12" fill="#d0bfff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="185.0" y="418.3" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">nonkdim ∈ {16,32}</text>
+<polyline points="320.0,270.0 380.0,270.0" fill="none" stroke="#1e1e1e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="380.0" y1="270.0" x2="370.3" y2="264.8" stroke="#1e1e1e" stroke-width="3" stroke-linecap="round"/>
+<line x1="380.0" y1="270.0" x2="370.3" y2="275.2" stroke="#1e1e1e" stroke-width="3" stroke-linecap="round"/>
+<text x="400.0" y="122.3" font-size="15" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1971c2" text-anchor="start">ProcessPoolExecutor(8)</text>
+<rect x="400.0" y="145.0" width="76.0" height="58.0" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="438.0" y="176.3" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">GPU 0</text>
+<rect x="484.0" y="145.0" width="76.0" height="58.0" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="522.0" y="176.3" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">GPU 1</text>
+<rect x="568.0" y="145.0" width="76.0" height="58.0" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="606.0" y="176.3" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">GPU 2</text>
+<rect x="652.0" y="145.0" width="76.0" height="58.0" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="690.0" y="176.3" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">GPU 3</text>
+<rect x="400.0" y="215.0" width="76.0" height="58.0" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="438.0" y="246.3" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">GPU 4</text>
+<rect x="484.0" y="215.0" width="76.0" height="58.0" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="522.0" y="246.3" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">GPU 5</text>
+<rect x="568.0" y="215.0" width="76.0" height="58.0" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="606.0" y="246.3" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">GPU 6</text>
+<rect x="652.0" y="215.0" width="76.0" height="58.0" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="690.0" y="246.3" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">GPU 7</text>
+<text x="400.0" y="299.8" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#868e96" text-anchor="start">CUDA/HIP_VISIBLE_DEVICES=i</text>
+<text x="400.0" y="314.8" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#868e96" text-anchor="start">~13–18 min full sweep</text>
+<polyline points="740.0,270.0 795.0,270.0" fill="none" stroke="#1e1e1e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="795.0" y1="270.0" x2="785.3" y2="264.8" stroke="#1e1e1e" stroke-width="3" stroke-linecap="round"/>
+<line x1="795.0" y1="270.0" x2="785.3" y2="275.2" stroke="#1e1e1e" stroke-width="3" stroke-linecap="round"/>
+<rect x="810.0" y="130.0" width="250.0" height="150.0" rx="12" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="2"/>
+<text x="935.0" y="158.8" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">_BEST_CFGS[(E,N,K)]</text>
+<text x="935.0" y="175.0" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle"></text>
+<text x="935.0" y="191.3" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">36 tuned entries</text>
+<text x="935.0" y="207.5" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">+ small/large-K</text>
+<text x="935.0" y="223.8" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">fallback</text>
+<text x="935.0" y="240.0" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle"></text>
+<text x="935.0" y="256.3" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">_pick_config()</text>
+<rect x="60.0" y="470.0" width="460.0" height="64.0" rx="12" fill="#ffec99" stroke="#e8590c" stroke-width="2"/>
+<text x="290.0" y="496.4" font-size="13" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">Fixes the L2 tile mismatch: small shapes get small tiles,</text>
+<text x="290.0" y="512.7" font-size="13" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">large get 256/256 + nk32 — best of both.</text>
+<rect x="560.0" y="470.0" width="500.0" height="64.0" rx="12" fill="#b2f2bb" stroke="#2f9e44" stroke-width="2"/>
+<text x="810.0" y="496.0" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">Representative geomean 1.50× → 1.61× vs bf16.</text>
+<text x="810.0" y="513.5" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">Full 36-shape production geomean ≈ 1.49× (see bench.py).</text>
+</svg>
