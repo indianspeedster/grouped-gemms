@@ -279,35 +279,40 @@ def d_grouped():
     E.append(header("What a grouped GEMM computes"))
     E.append(caption("MoE routes a jagged number of tokens to each expert: out[g] = A[group g] @ B[g]^T, per expert.", 40, 60))
 
-    # A jagged
-    E.append(text(70, 110, "A  (M, K)  — expert-sorted rows", size=15, color=BLUE))
+    col_top = 150
     experts = [("E0", LBLUE, 70), ("E1", LGREEN, 40), ("E2", LYELLOW, 95), ("E3", LORANGE, 35)]
-    y = 140
+    col_bot = col_top + sum(h + 4 for _, _, h in experts)   # ≈ 406
+
+    # A jagged
+    E.append(text(70, 118, "A  (M, K)  — expert-sorted rows", size=15, color=BLUE))
+    y = col_top
     for name, col, h in experts:
         E.append(rect(70, y, 150, h, bg=col, sw=1.5))
         E.append(label(145, y + h / 2, name, size=13))
         y += h + 4
-    E.append(line(232, 140, [[0, 0], [0, y - 144]], color=GRAY))
-    E.append(label(300, 250, "offsets =\n[70,110,205,240]", size=12, color=GRAY, family=3))
+    # offsets annotation in the gap, vertically centered on the column
+    E.append(line(232, col_top, [[0, 0], [0, col_bot - col_top - 4]], color=GRAY))
+    E.append(label(326, (col_top + col_bot) / 2, "offsets\n[70,110,\n205,240]", size=12, color=GRAY, family=3))
 
-    # times B per expert
-    E.append(text(420, 110, "B  (E, N, K)", size=15, color=VIOLET))
+    # × B per expert
+    E.append(label(326, col_top - 22, "×", size=26, color=INK))
+    E.append(text(420, 118, "B  (E, N, K)", size=15, color=VIOLET))
     for i in range(4):
-        E += box(420 + i * 70, 140, 60, 60, f"B{i}", bg=LVIOLET, size=13)
-    E.append(text(420, 215, "one weight matrix per expert", size=12, color=GRAY))
+        E += box(420 + i * 70, col_top, 60, 60, f"B{i}", bg=LVIOLET, size=13)
+    E.append(text(420, col_top + 70, "one weight matrix\nper expert", size=12, color=GRAY))
 
-    E.append(arrow(710, 250, [[0, 0], [60, 0]], color=INK, sw=3))
-    E.append(text(640, 215, "=", size=24))
-
-    # output
-    E.append(text(800, 110, "out (M, N)", size=15, color=GREEN))
-    y = 140
+    # = output
+    E.append(label(745, (col_top + col_bot) / 2, "=", size=28, color=INK))
+    E.append(text(790, 118, "out  (M, N)", size=15, color=GREEN))
+    y = col_top
     for name, col, h in experts:
-        E.append(rect(800, y, 150, h, bg=col, sw=1.5))
-        E.append(label(875, y + h / 2, f"{name}@B{name[1]}^T", size=11))
+        E.append(rect(790, y, 170, h, bg=col, sw=1.5))
+        E.append(label(875, y + h / 2, f"{name} @ B{name[1]}^T", size=11))
         y += h + 4
-    E.append(text(70, 340, "The row-count per expert is data-dependent (jagged) and only known at runtime — so the kernel must", size=14, color=GRAY))
-    E.append(text(70, 362, "discover, per output tile, which expert it belongs to. That routing is the first thing a naive version gets wrong.", size=14, color=GRAY))
+
+    by = col_bot + 28
+    E.append(text(70, by, "The row-count per expert is data-dependent (jagged) and only known at runtime — so the kernel", size=14, color=GRAY))
+    E.append(text(70, by + 22, "must discover, per output tile, which expert it belongs to. That routing is the first thing a naive version gets wrong.", size=14, color=GRAY))
     save("02-grouped-gemm.excalidraw", E, "grouped gemm concept")
 
 
@@ -332,7 +337,7 @@ def d_naive():
     E += box(lx + 20, ly + 132, 370, 40, "loop K  →  write acc to out", bg=LGRAY, size=13, family=3)
 
     E += box(440, 380, 420, 60, "Result: 914 TFLOPS geomean — the scale-load shuffle and\ntiny tiles leave the MFMA units starved.", bg=LYELLOW, stroke=ORANGE, size=14)
-    E.append(text(60, 430, "Every box on the left is an opportunity. The rest of the post lights them up one rung at a time.", size=13, color=GRAY))
+    E.append(text(60, 460, "Every box on the left is an opportunity. The rest of the post lights them up one rung at a time.", size=13, color=GRAY))
     save("03-naive-kernel.excalidraw", E, "naive kernel")
 
 
@@ -564,7 +569,7 @@ def d_ladder():
     # naive baseline reference line
     ry = base_y - bars[0][1] * scale
     E.append(line(x0 - 30, ry, [[0, 0], [span, 0]], color=RED, dash="dashed"))
-    E.append(label(x0 + span - 80, ry - 13, "naive = 914 TF", size=12, color=RED))
+    E.append(label(x0 + 55, ry - 13, "naive = 914 TF", size=12, color=RED))
     for i, (name, val, col) in enumerate(bars):
         bx = x0 + i * (bw + gap)
         h = val * scale

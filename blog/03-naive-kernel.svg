@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="870" height="474" viewBox="16.0 -4.0 869.8 474.2" font-family="Segoe UI, Helvetica, Arial, sans-serif">
-<rect x="16.0" y="-4.0" width="869.8" height="474.2" fill="#ffffff"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="870" height="504" viewBox="16.0 -4.0 869.8 504.2" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+<rect x="16.0" y="-4.0" width="869.8" height="504.2" fill="#ffffff"/>
 <text x="40.0" y="43.0" font-size="28" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#c41e3a" text-anchor="start">The naive baseline (L0)</text>
 <text x="40.0" y="71.5" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">Correct MXFP8 grouped GEMM, zero AMD tuning. One output tile per program. Measured: 914 TFLOPS geomean.</text>
 <rect x="60.0" y="110.0" width="300.0" height="60.0" rx="12" fill="#ffc9c9" stroke="#1e1e1e" stroke-width="2"/>
@@ -28,5 +28,5 @@
 <rect x="440.0" y="380.0" width="420.0" height="60.0" rx="12" fill="#ffec99" stroke="#e8590c" stroke-width="2"/>
 <text x="650.0" y="404.0" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">Result: 914 TFLOPS geomean — the scale-load shuffle and</text>
 <text x="650.0" y="421.5" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">tiny tiles leave the MFMA units starved.</text>
-<text x="60.0" y="440.7" font-size="13" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">Every box on the left is an opportunity. The rest of the post lights them up one rung at a time.</text>
+<text x="60.0" y="470.7" font-size="13" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">Every box on the left is an opportunity. The rest of the post lights them up one rung at a time.</text>
 </svg>
