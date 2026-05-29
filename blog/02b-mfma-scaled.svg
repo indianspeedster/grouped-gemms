@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1211" height="574" viewBox="16.0 -4.0 1210.7 574.2" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+<rect x="16.0" y="-4.0" width="1210.7" height="574.2" fill="#ffffff"/>
+<text x="40.0" y="43.0" font-size="28" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#c41e3a" text-anchor="start">Inside the matrix engine — the scaled MFMA</text>
+<text x="40.0" y="71.5" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">v_mfma_scale_f32_16x16x128_f8f6f4:  C[16×16] += A[16×128] · B[128×16], applying one e8m0 scale per 32-wide K-block natively — no separate dequant pass.</text>
+<text x="70.0" y="116.3" font-size="15" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1971c2" text-anchor="start">A operand  ·  16 rows × 128 (K)  ·  e4m3</text>
+<text x="70.0" y="135.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">one e8m0 scale per 32-element K-block (per row):</text>
+<rect x="70.0" y="150.0" width="80.0" height="24.0" rx="12" fill="#ffec99" stroke="#e8590c" stroke-width="2"/>
+<text x="110.0" y="164.1" font-size="11" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">e8m0</text>
+<polyline points="110.0,174.0 110.0,188.0" fill="none" stroke="#e8590c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="110.0" y1="188.0" x2="115.2" y2="178.3" stroke="#e8590c" stroke-width="2" stroke-linecap="round"/>
+<line x1="110.0" y1="188.0" x2="104.8" y2="178.3" stroke="#e8590c" stroke-width="2" stroke-linecap="round"/>
+<rect x="70.0" y="188.0" width="80.0" height="58.0" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="110.0" y="219.1" font-size="11" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">k 0–31</text>
+<rect x="166.0" y="150.0" width="80.0" height="24.0" rx="12" fill="#ffec99" stroke="#e8590c" stroke-width="2"/>
+<text x="206.0" y="164.1" font-size="11" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">e8m0</text>
+<polyline points="206.0,174.0 206.0,188.0" fill="none" stroke="#e8590c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="206.0" y1="188.0" x2="211.2" y2="178.3" stroke="#e8590c" stroke-width="2" stroke-linecap="round"/>
+<line x1="206.0" y1="188.0" x2="200.8" y2="178.3" stroke="#e8590c" stroke-width="2" stroke-linecap="round"/>
+<rect x="166.0" y="188.0" width="80.0" height="58.0" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="206.0" y="219.1" font-size="11" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">k 32–63</text>
+<rect x="262.0" y="150.0" width="80.0" height="24.0" rx="12" fill="#ffec99" stroke="#e8590c" stroke-width="2"/>
+<text x="302.0" y="164.1" font-size="11" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">e8m0</text>
+<polyline points="302.0,174.0 302.0,188.0" fill="none" stroke="#e8590c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="302.0" y1="188.0" x2="307.2" y2="178.3" stroke="#e8590c" stroke-width="2" stroke-linecap="round"/>
+<line x1="302.0" y1="188.0" x2="296.8" y2="178.3" stroke="#e8590c" stroke-width="2" stroke-linecap="round"/>
+<rect x="262.0" y="188.0" width="80.0" height="58.0" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="302.0" y="219.1" font-size="11" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">k 64–95</text>
+<rect x="358.0" y="150.0" width="80.0" height="24.0" rx="12" fill="#ffec99" stroke="#e8590c" stroke-width="2"/>
+<text x="398.0" y="164.1" font-size="11" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">e8m0</text>
+<polyline points="398.0,174.0 398.0,188.0" fill="none" stroke="#e8590c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="398.0" y1="188.0" x2="403.2" y2="178.3" stroke="#e8590c" stroke-width="2" stroke-linecap="round"/>
+<line x1="398.0" y1="188.0" x2="392.8" y2="178.3" stroke="#e8590c" stroke-width="2" stroke-linecap="round"/>
+<rect x="358.0" y="188.0" width="80.0" height="58.0" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="398.0" y="219.1" font-size="11" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">k 96–127</text>
+<text x="455.0" y="222.8" font-size="30" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">×</text>
+<text x="490.0" y="116.3" font-size="15" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#6741d9" text-anchor="start">B operand  ·  128 (K) × 16  ·  e4m3</text>
+<rect x="510.0" y="150.0" width="90.0" height="36.0" rx="12" fill="#d0bfff" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="555.0" y="170.1" font-size="11" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">32 rows</text>
+<rect x="612.0" y="156.0" width="70.0" height="24.0" rx="12" fill="#ffec99" stroke="#e8590c" stroke-width="2"/>
+<text x="647.0" y="170.1" font-size="11" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">e8m0</text>
+<rect x="510.0" y="194.0" width="90.0" height="36.0" rx="12" fill="#d0bfff" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="555.0" y="214.1" font-size="11" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">32 rows</text>
+<rect x="612.0" y="200.0" width="70.0" height="24.0" rx="12" fill="#ffec99" stroke="#e8590c" stroke-width="2"/>
+<text x="647.0" y="214.1" font-size="11" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">e8m0</text>
+<rect x="510.0" y="238.0" width="90.0" height="36.0" rx="12" fill="#d0bfff" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="555.0" y="258.1" font-size="11" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">32 rows</text>
+<rect x="612.0" y="244.0" width="70.0" height="24.0" rx="12" fill="#ffec99" stroke="#e8590c" stroke-width="2"/>
+<text x="647.0" y="258.1" font-size="11" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">e8m0</text>
+<rect x="510.0" y="282.0" width="90.0" height="36.0" rx="12" fill="#d0bfff" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="555.0" y="302.1" font-size="11" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">32 rows</text>
+<rect x="612.0" y="288.0" width="70.0" height="24.0" rx="12" fill="#ffec99" stroke="#e8590c" stroke-width="2"/>
+<text x="647.0" y="302.1" font-size="11" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">e8m0</text>
+<text x="715.0" y="222.8" font-size="30" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">=</text>
+<rect x="740.0" y="158.0" width="300.0" height="110.0" rx="12" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="2"/>
+<text x="890.0" y="180.7" font-size="14" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">v_mfma_scale</text>
+<text x="890.0" y="198.2" font-size="14" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">f32_16×16×128</text>
+<text x="890.0" y="215.7" font-size="14" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle"></text>
+<text x="890.0" y="233.2" font-size="14" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">accumulate 4 scaled</text>
+<text x="890.0" y="250.7" font-size="14" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">partial products</text>
+<polyline points="890.0,268.0 890.0,298.0" fill="none" stroke="#2f9e44" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="890.0" y1="298.0" x2="895.2" y2="288.3" stroke="#2f9e44" stroke-width="2" stroke-linecap="round"/>
+<line x1="890.0" y1="298.0" x2="884.8" y2="288.3" stroke="#2f9e44" stroke-width="2" stroke-linecap="round"/>
+<rect x="815.0" y="298.0" width="150.0" height="78.0" rx="12" fill="#a5d8ff" stroke="#1971c2" stroke-width="2"/>
+<text x="890.0" y="323.3" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">C tile</text>
+<text x="890.0" y="339.5" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">16 × 16</text>
+<text x="890.0" y="355.8" font-size="13" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">fp32 accumulator</text>
+<polyline points="40.0,402.0 1050.0,402.0" fill="none" stroke="#e9ecef" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,6"/>
+<text x="60.0" y="431.5" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="start">Per output element, summed over the 4 K-blocks  b = 0..3:</text>
+<rect x="60.0" y="450.0" width="980.0" height="44.0" rx="12" fill="#e9ecef" stroke="#1e1e1e" stroke-width="2"/>
+<text x="550.0" y="474.9" font-size="15" font-family="Consolas, 'Courier New', monospace" fill="#1e1e1e" text-anchor="middle">C[i,j]  +=  Σ_b   scale_A[i,b] · scale_B[j,b]  ·  Σ_(k in block b)  A[i,k] · B[k,j]</text>
+<text x="60.0" y="518.7" font-size="13" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">The e8m0 scale is a power of two, so the engine folds it in as an exponent bias on the partial sum — exact and free.</text>
+<text x="60.0" y="540.7" font-size="13" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">The 32-element block is why K-tiles must be multiples of 32, and why the scale operand's register layout (L4) matters.</text>
+</svg>

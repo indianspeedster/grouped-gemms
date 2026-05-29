@@ -1,42 +1,43 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="994" height="502" viewBox="16.0 -4.0 994.3 501.5" font-family="Segoe UI, Helvetica, Arial, sans-serif">
-<rect x="16.0" y="-4.0" width="994.3" height="501.5" fill="#ffffff"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1349" height="512" viewBox="16.0 -4.0 1349.3 511.5" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+<rect x="16.0" y="-4.0" width="1349.3" height="511.5" fill="#ffffff"/>
 <text x="40.0" y="43.0" font-size="28" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#c41e3a" text-anchor="start">What a grouped GEMM computes</text>
-<text x="40.0" y="71.5" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">MoE routes a jagged number of tokens to each expert: out[g] = A[group g] @ B[g]^T, per expert.</text>
-<text x="70.0" y="130.3" font-size="15" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1971c2" text-anchor="start">A  (M, K)  — expert-sorted rows</text>
-<rect x="70.0" y="150.0" width="150.0" height="70.0" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="1.5"/>
-<text x="145.0" y="187.5" font-size="13" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">E0</text>
-<rect x="70.0" y="224.0" width="150.0" height="40.0" rx="12" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="1.5"/>
-<text x="145.0" y="246.5" font-size="13" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">E1</text>
-<rect x="70.0" y="268.0" width="150.0" height="95.0" rx="12" fill="#ffec99" stroke="#1e1e1e" stroke-width="1.5"/>
-<text x="145.0" y="318.0" font-size="13" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">E2</text>
-<rect x="70.0" y="367.0" width="150.0" height="35.0" rx="12" fill="#ffd8a8" stroke="#1e1e1e" stroke-width="1.5"/>
-<text x="145.0" y="387.0" font-size="13" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">E3</text>
-<polyline points="232.0,150.0 232.0,402.0" fill="none" stroke="#868e96" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="326.0" y="265.3" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#868e96" text-anchor="middle">offsets</text>
-<text x="326.0" y="280.3" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#868e96" text-anchor="middle">[70,110,</text>
-<text x="326.0" y="295.3" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#868e96" text-anchor="middle">205,240]</text>
-<text x="326.0" y="133.1" font-size="26" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">×</text>
-<text x="420.0" y="130.3" font-size="15" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#6741d9" text-anchor="start">B  (E, N, K)</text>
-<rect x="420.0" y="150.0" width="60.0" height="60.0" rx="12" fill="#d0bfff" stroke="#1e1e1e" stroke-width="2"/>
-<text x="450.0" y="182.5" font-size="13" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">B0</text>
-<rect x="490.0" y="150.0" width="60.0" height="60.0" rx="12" fill="#d0bfff" stroke="#1e1e1e" stroke-width="2"/>
-<text x="520.0" y="182.5" font-size="13" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">B1</text>
-<rect x="560.0" y="150.0" width="60.0" height="60.0" rx="12" fill="#d0bfff" stroke="#1e1e1e" stroke-width="2"/>
-<text x="590.0" y="182.5" font-size="13" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">B2</text>
-<rect x="630.0" y="150.0" width="60.0" height="60.0" rx="12" fill="#d0bfff" stroke="#1e1e1e" stroke-width="2"/>
-<text x="660.0" y="182.5" font-size="13" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">B3</text>
-<text x="420.0" y="229.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">one weight matrix</text>
-<text x="420.0" y="244.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">per expert</text>
-<text x="745.0" y="283.5" font-size="28" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">=</text>
-<text x="790.0" y="130.3" font-size="15" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#2f9e44" text-anchor="start">out  (M, N)</text>
-<rect x="790.0" y="150.0" width="170.0" height="70.0" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="1.5"/>
-<text x="875.0" y="187.1" font-size="11" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">E0 @ B0^T</text>
-<rect x="790.0" y="224.0" width="170.0" height="40.0" rx="12" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="1.5"/>
-<text x="875.0" y="246.1" font-size="11" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">E1 @ B1^T</text>
-<rect x="790.0" y="268.0" width="170.0" height="95.0" rx="12" fill="#ffec99" stroke="#1e1e1e" stroke-width="1.5"/>
-<text x="875.0" y="317.6" font-size="11" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">E2 @ B2^T</text>
-<rect x="790.0" y="367.0" width="170.0" height="35.0" rx="12" fill="#ffd8a8" stroke="#1e1e1e" stroke-width="1.5"/>
-<text x="875.0" y="386.6" font-size="11" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">E3 @ B3^T</text>
-<text x="70.0" y="445.5" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">The row-count per expert is data-dependent (jagged) and only known at runtime — so the kernel</text>
-<text x="70.0" y="467.5" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">must discover, per output tile, which expert it belongs to. That routing is the first thing a naive version gets wrong.</text>
+<text x="40.0" y="71.5" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">An MoE layer routes a jagged, data-dependent number of tokens to each expert. The op is E independent matmuls: each expert's slice of A times that expert's weights B[g].</text>
+<text x="70.0" y="132.3" font-size="15" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1971c2" text-anchor="start">A  ·  (M tokens, K)  ·  expert-sorted rows</text>
+<rect x="70.0" y="150.0" width="170.0" height="70.0" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="155.0" y="187.3" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">E0  ·  70 tokens</text>
+<rect x="70.0" y="226.0" width="170.0" height="40.0" rx="12" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="155.0" y="248.3" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">E1  ·  40 tokens</text>
+<rect x="70.0" y="272.0" width="170.0" height="95.0" rx="12" fill="#ffec99" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="155.0" y="321.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">E2  ·  95 tokens</text>
+<rect x="70.0" y="373.0" width="170.0" height="35.0" rx="12" fill="#ffd8a8" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="155.0" y="392.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">E3  ·  35 tokens</text>
+<polyline points="252.0,150.0 252.0,408.0" fill="none" stroke="#868e96" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="312.0" y="263.5" font-size="11" font-family="Consolas, 'Courier New', monospace" fill="#868e96" text-anchor="middle">offsets</text>
+<text x="312.0" y="277.3" font-size="11" font-family="Consolas, 'Courier New', monospace" fill="#868e96" text-anchor="middle">(cumulative)</text>
+<text x="312.0" y="291.0" font-size="11" font-family="Consolas, 'Courier New', monospace" fill="#868e96" text-anchor="middle">70,110,</text>
+<text x="312.0" y="304.8" font-size="11" font-family="Consolas, 'Courier New', monospace" fill="#868e96" text-anchor="middle">205,240</text>
+<text x="380.0" y="287.9" font-size="30" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">×</text>
+<text x="430.0" y="132.3" font-size="15" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#6741d9" text-anchor="start">B  ·  (E, N, K)</text>
+<rect x="430.0" y="150.0" width="62.0" height="62.0" rx="12" fill="#d0bfff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="461.0" y="183.7" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">B0</text>
+<rect x="502.0" y="150.0" width="62.0" height="62.0" rx="12" fill="#d0bfff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="533.0" y="183.7" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">B1</text>
+<rect x="574.0" y="150.0" width="62.0" height="62.0" rx="12" fill="#d0bfff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="605.0" y="183.7" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">B2</text>
+<rect x="646.0" y="150.0" width="62.0" height="62.0" rx="12" fill="#d0bfff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="677.0" y="183.7" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">B3</text>
+<text x="430.0" y="235.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">each B[g] is dense and full-size;</text>
+<text x="430.0" y="250.8" font-size="12" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">only the token count varies</text>
+<text x="745.0" y="287.9" font-size="30" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">=</text>
+<text x="800.0" y="132.3" font-size="15" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#2f9e44" text-anchor="start">out  ·  (M, N)</text>
+<rect x="800.0" y="150.0" width="180.0" height="70.0" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="890.0" y="187.1" font-size="11" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">E0 @ B0^T</text>
+<rect x="800.0" y="226.0" width="180.0" height="40.0" rx="12" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="890.0" y="248.1" font-size="11" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">E1 @ B1^T</text>
+<rect x="800.0" y="272.0" width="180.0" height="95.0" rx="12" fill="#ffec99" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="890.0" y="321.6" font-size="11" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">E2 @ B2^T</text>
+<rect x="800.0" y="373.0" width="180.0" height="35.0" rx="12" fill="#ffd8a8" stroke="#1e1e1e" stroke-width="1.5"/>
+<text x="890.0" y="392.6" font-size="11" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1e1e1e" text-anchor="middle">E3 @ B3^T</text>
+<text x="70.0" y="455.5" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">Row-counts per expert are known only at runtime (passed as group_end_offsets). Before any math the</text>
+<text x="70.0" y="477.5" font-size="14" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#868e96" text-anchor="start">kernel must decide, per output tile, which expert owns it — cheap routing is the first half of the battle.</text>
 </svg>

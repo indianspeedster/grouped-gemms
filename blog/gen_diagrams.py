@@ -277,43 +277,94 @@ def d_scalecalc():
 def d_grouped():
     E = []
     E.append(header("What a grouped GEMM computes"))
-    E.append(caption("MoE routes a jagged number of tokens to each expert: out[g] = A[group g] @ B[g]^T, per expert.", 40, 60))
+    E.append(caption("An MoE layer routes a jagged, data-dependent number of tokens to each expert. The op is E "
+                     "independent matmuls: each expert's slice of A times that expert's weights B[g].", 40, 60))
 
     col_top = 150
     experts = [("E0", LBLUE, 70), ("E1", LGREEN, 40), ("E2", LYELLOW, 95), ("E3", LORANGE, 35)]
-    col_bot = col_top + sum(h + 4 for _, _, h in experts)   # ≈ 406
+    col_bot = col_top + sum(h + 6 for _, _, h in experts)
 
-    # A jagged
-    E.append(text(70, 118, "A  (M, K)  — expert-sorted rows", size=15, color=BLUE))
+    # A jagged, expert-sorted
+    E.append(text(70, 120, "A  ·  (M tokens, K)  ·  expert-sorted rows", size=15, color=BLUE))
     y = col_top
     for name, col, h in experts:
-        E.append(rect(70, y, 150, h, bg=col, sw=1.5))
-        E.append(label(145, y + h / 2, name, size=13))
-        y += h + 4
-    # offsets annotation in the gap, vertically centered on the column
-    E.append(line(232, col_top, [[0, 0], [0, col_bot - col_top - 4]], color=GRAY))
-    E.append(label(326, (col_top + col_bot) / 2, "offsets\n[70,110,\n205,240]", size=12, color=GRAY, family=3))
+        E.append(rect(70, y, 170, h, bg=col, sw=1.5))
+        E.append(label(155, y + h / 2, "%s  ·  %d tokens" % (name, h), size=12))
+        y += h + 6
+    # brace + cumulative offsets in the gap
+    E.append(line(252, col_top, [[0, 0], [0, col_bot - col_top - 6]], color=GRAY))
+    E.append(label(312, (col_top + col_bot) / 2, "offsets\n(cumulative)\n70,110,\n205,240", size=11, color=GRAY, family=3))
 
     # × B per expert
-    E.append(label(326, col_top - 22, "×", size=26, color=INK))
-    E.append(text(420, 118, "B  (E, N, K)", size=15, color=VIOLET))
+    E.append(label(380, (col_top + col_bot) / 2, "×", size=30, color=INK))
+    E.append(text(430, 120, "B  ·  (E, N, K)", size=15, color=VIOLET))
     for i in range(4):
-        E += box(420 + i * 70, col_top, 60, 60, f"B{i}", bg=LVIOLET, size=13)
-    E.append(text(420, col_top + 70, "one weight matrix\nper expert", size=12, color=GRAY))
+        E += box(430 + i * 72, col_top, 62, 62, f"B{i}", bg=LVIOLET, size=14)
+    E.append(text(430, col_top + 76, "each B[g] is dense and full-size;\nonly the token count varies", size=12, color=GRAY))
 
     # = output
-    E.append(label(745, (col_top + col_bot) / 2, "=", size=28, color=INK))
-    E.append(text(790, 118, "out  (M, N)", size=15, color=GREEN))
+    E.append(label(745, (col_top + col_bot) / 2, "=", size=30, color=INK))
+    E.append(text(800, 120, "out  ·  (M, N)", size=15, color=GREEN))
     y = col_top
     for name, col, h in experts:
-        E.append(rect(790, y, 170, h, bg=col, sw=1.5))
-        E.append(label(875, y + h / 2, f"{name} @ B{name[1]}^T", size=11))
-        y += h + 4
+        E.append(rect(800, y, 180, h, bg=col, sw=1.5))
+        E.append(label(890, y + h / 2, f"{name} @ B{name[1]}^T", size=11))
+        y += h + 6
 
-    by = col_bot + 28
-    E.append(text(70, by, "The row-count per expert is data-dependent (jagged) and only known at runtime — so the kernel", size=14, color=GRAY))
-    E.append(text(70, by + 22, "must discover, per output tile, which expert it belongs to. That routing is the first thing a naive version gets wrong.", size=14, color=GRAY))
+    by = col_bot + 30
+    E.append(text(70, by, "Row-counts per expert are known only at runtime (passed as group_end_offsets). Before any math the", size=14, color=GRAY))
+    E.append(text(70, by + 22, "kernel must decide, per output tile, which expert owns it — cheap routing is the first half of the battle.", size=14, color=GRAY))
     save("02-grouped-gemm.excalidraw", E, "grouped gemm concept")
+
+
+# --- 02b  inside the scaled MFMA ---------------------------------------
+def d_mfma():
+    E = []
+    E.append(header("Inside the matrix engine — the scaled MFMA"))
+    E.append(caption("v_mfma_scale_f32_16x16x128_f8f6f4:  C[16×16] += A[16×128] · B[128×16], applying one e8m0 "
+                     "scale per 32-wide K-block natively — no separate dequant pass.", 40, 60))
+
+    # A operand: 4 K-blocks of 32 laid out along K (horizontal)
+    E.append(text(70, 104, "A operand  ·  16 rows × 128 (K)  ·  e4m3", size=15, color=BLUE))
+    E.append(text(70, 126, "one e8m0 scale per 32-element K-block (per row):", size=12, color=GRAY))
+    for b in range(4):
+        x = 70 + b * 96
+        E += box(x, 150, 80, 24, "e8m0", bg=LYELLOW, stroke=ORANGE, size=11, family=3)
+        E.append(arrow(x + 40, 174, [[0, 0], [0, 14]], color=ORANGE))
+        E.append(rect(x, 188, 80, 58, bg=LBLUE, sw=1.5))
+        E.append(label(x + 40, 217, "k %d–%d" % (b * 32, b * 32 + 31), size=11, family=3))
+
+    E.append(label(455, 217, "×", size=30, color=INK))
+
+    # B operand: same 4 K-blocks down the contraction axis (vertical)
+    E.append(text(490, 104, "B operand  ·  128 (K) × 16  ·  e4m3", size=15, color=VIOLET))
+    for b in range(4):
+        yb = 150 + b * 44
+        E.append(rect(510, yb, 90, 36, bg=LVIOLET, sw=1.5))
+        E.append(label(555, yb + 18, "32 rows", size=11, family=3))
+        E += box(612, yb + 6, 70, 24, "e8m0", bg=LYELLOW, stroke=ORANGE, size=11, family=3)
+
+    E.append(label(715, 217, "=", size=30, color=INK))
+
+    # MFMA engine + C accumulator
+    E += box(740, 158, 300, 110,
+             "v_mfma_scale\nf32_16×16×128\n\naccumulate 4 scaled\npartial products", bg=LGREEN, size=14, family=3)
+    E.append(arrow(890, 268, [[0, 0], [0, 30]], color=GREEN, sw=2))
+    E += box(815, 298, 150, 78, "C tile\n16 × 16\nfp32 accumulator", bg=LBLUE, stroke=BLUE, size=13, family=3)
+
+    # the math
+    E.append(line(40, 402, [[0, 0], [1010, 0]], color=LGRAY, dash="dashed"))
+    E.append(text(60, 420, "Per output element, summed over the 4 K-blocks  b = 0..3:", size=14, color=INK))
+    E += box(60, 450, 980, 44,
+             "C[i,j]  +=  Σ_b   scale_A[i,b] · scale_B[j,b]  ·  Σ_(k in block b)  A[i,k] · B[k,j]",
+             bg=LGRAY, size=15, family=3)
+    E.append(text(60, 508,
+                  "The e8m0 scale is a power of two, so the engine folds it in as an exponent bias on the partial sum — exact and free.",
+                  size=13, color=GRAY))
+    E.append(text(60, 530,
+                  "The 32-element block is why K-tiles must be multiples of 32, and why the scale operand's register layout (L4) matters.",
+                  size=13, color=GRAY))
+    save("02b-mfma-scaled.excalidraw", E, "scaled MFMA internals")
 
 
 # --- 03  naive kernel ---------------------------------------------------
@@ -612,7 +663,7 @@ def d_autotune():
 
 
 if __name__ == "__main__":
-    d_mxblock(); d_scalecalc(); d_grouped(); d_naive()
+    d_mxblock(); d_scalecalc(); d_grouped(); d_mfma(); d_naive()
     d_routing(); d_packed(); d_tiles(); d_groupm(); d_xcd()
     d_cdna4(); d_kloop(); d_ladder(); d_autotune()
     print("done.")

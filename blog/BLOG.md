@@ -108,11 +108,30 @@ the L4 optimization.
 
 ---
 
-## 4. Where the AMD-specific work lives
+## 4. How the matrix engine consumes MXFP8
 
-On CDNA4 (gfx950 / MI350+), `tl.dot_scaled` lowers to
-`v_mfma_scale_f32_16x16x128_f8f6f4` — a matrix instruction that takes the e8m0
-scales as a *native operand*. Two things then matter enormously:
+![02b-mfma-scaled.svg](02b-mfma-scaled.svg)
+
+On CDNA4 (gfx950 / MI350+), `tl.dot_scaled` lowers to one matrix instruction:
+`v_mfma_scale_f32_16x16x128_f8f6f4`. It computes a `16×16` fp32 tile of `C` from
+a `16×128` tile of `A` and a `128×16` tile of `B`, both in `e4m3` — and crucially
+it takes the **e8m0 scales as a native operand**.
+
+The `128`-wide contraction is split into **four 32-element K-blocks**, and each
+block carries its own e8m0 scale on both operands. The engine accumulates, per
+output element:
+
+```
+C[i,j] += Σ_b  scale_A[i,b] · scale_B[j,b] · Σ_(k in block b) A[i,k]·B[k,j]
+```
+
+There is **no separate dequantization pass**: because the scale is a power of
+two, the hardware folds it in as an exponent bias on the partial sum — exact and
+free. This is the whole reason MXFP8 is fast here. (It's also why every K-tile
+must be a **multiple of 32** — the block boundary is baked into the instruction.)
+
+But the scales are now a *register operand*, not just data in memory, and two
+things about feeding them matter enormously:
 
 1. **The scale operand layout.** The MFMA wants its scales in a specific
    swizzled register order. Hand it the natural row-major `(M, K/32)` layout and
