@@ -1,26 +1,38 @@
-# Copyright (c) Meta Platforms, Inc. and affiliates.
-# All rights reserved.
+##############################################################################
+# MIT License
 #
-# This source code is licensed under the BSD 3-Clause license found in the
-# LICENSE file in the root directory of this source tree.
+# Copyright (c) 2026 Advanced Micro Devices, Inc. All Rights Reserved.
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+##############################################################################
 
-"""Forward / dgrad MXFP4 grouped-GEMM kernel for ROCm gfx950+.
+"""Forward / dgrad MXFP4 (e2m1) grouped-GEMM kernel for ROCm gfx950+.
 
-Exports ``triton_mxfp4_grouped_mm`` — the MXFP4 (e2m1 + e8m0) twin of
-``forward.py``'s MXFP8 kernel. Both compute ``A @ B^T`` per expert group and
-share every scheduling optimization (XCD swizzle, GROUP_M L2 reuse, packed
-per-tile expert lookup, and the CDNA4-native pre-shuffled scale layout).
+Exports ``triton_mxfp4_grouped_mm``: computes ``A @ B^T`` per expert group.
+The MXFP4 twin of the MXFP8 kernel, sharing its scheduling (XCD swizzle,
+GROUP_M L2 reuse, packed per-tile expert lookup, CDNA4-native scale layout).
 
-Only three things differ from the MXFP8 kernel:
-  - operands are e2m1: two fp4 codes packed per uint8 along K, so the operand
-    tiles are ``BLOCK_K // 2`` bytes wide and step by ``BLOCK_K // 2``;
-  - ``tl.dot_scaled`` is called with the ``"e2m1"`` format;
-  - the tail-K mask is computed in packed (2-elem-per-byte) units.
-
-The e8m0 scales are byte-for-byte identical to MXFP8 (one scale per 32 logical
-K elements), and ``v_mfma_..._f8f6f4`` consumes f8/f6/f4 with the same scale
-operand layout — so the host-side scale shuffle and the in-kernel unshuffle
-helpers are imported unchanged from ``forward.py``.
+Operands are e2m1: two fp4 codes packed per uint8 along K, so operand tiles
+are ``BLOCK_K // 2`` wide/step and the tail-K mask is in packed units. The
+e8m0 scales are byte-for-byte identical to MXFP8 (one per 32 logical K
+elements), so the host-side shuffle and in-kernel unshuffle helpers are reused
+unchanged from the mxfp8 package.
 """
 
 import torch

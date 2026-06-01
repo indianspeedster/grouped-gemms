@@ -1,18 +1,35 @@
-# Copyright (c) Meta Platforms, Inc. and affiliates.
-# All rights reserved.
+##############################################################################
+# MIT License
 #
-# This source code is licensed under the BSD 3-Clause license found in the
-# LICENSE file in the root directory of this source tree.
+# Copyright (c) 2026 Advanced Micro Devices, Inc. All Rights Reserved.
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+##############################################################################
 
 """Forward / dgrad MXFP8 grouped-GEMM kernel for ROCm gfx950+.
 
 Exports ``triton_mxfp8_grouped_mm`` — a persistent grouped GEMM used for the
-MoE forward pass AND the dgrad (input gradient) pass, both of which are
-A @ B^T per expert group. The weight-gradient path lives in ``backward.py``.
+MoE forward pass and the dgrad (input gradient) pass, both A @ B^T per expert
+group. The weight-gradient path lives in ``backward.py``.
 
-Scheduling (adapted from AMD aiter's moe_op_gemm_a8w8, which derives from
-triton-lang's triton_kernels matmul_ogs):
-  - XCD swizzle (ordered per-XCD launch for MI300/MI350 8-XCD parts)
+Scheduling:
+  - XCD swizzle (ordered per-XCD launch for 8-XCD parts)
   - GROUP_M pid reordering for L2 reuse
   - Per-tile expert lookup via a packed (block_id << 16) | expt_id map
   - CDNA4-native pre-shuffled scale layout (removes the #blocked -> #linear1
@@ -71,7 +88,7 @@ if _rocm_mxfp8_available:
         MX_SCALE_BLOCK_K: tl.constexpr,
         N_PRESHUFFLE_FACTOR: tl.constexpr = 32,
     ):
-        """Inverse of host-side shuffle for nonkdim=32 MFMA (from tutorial 10)."""
+        """Inverse of host-side shuffle for nonkdim=32 MFMA."""
         x = x.reshape(
             BLOCK_N // N_PRESHUFFLE_FACTOR, MX_SCALE_BLOCK_K // 8, 2, 32, 4, 1
         )
@@ -396,13 +413,11 @@ if _rocm_mxfp8_available:
         x = x.permute(0, 2, 4, 1, 3, 5).contiguous()
         return x.reshape(M // 32, Ks * 32)
 
-    # Per-shape best configs from a 36-shape × 576-config sweep on MI355X
-    # (8-GPU parallel, see tune_driver.py / tune_worker.py). Search space:
-    # BLOCK_M ∈ {64,128,256}, BLOCK_N ∈ {128,256}, BLOCK_K ∈ {128,256},
-    # GROUP_M ∈ {1,4,8}, num_warps ∈ {4,8}, num_stages ∈ {1,2},
-    # waves_per_eu ∈ {0,2}, matrix_instr_nonkdim ∈ {16,32}. Comments show
-    # the swept median runtime. nk32 wins 27/36 shapes (5-9% on K=2048,
-    # 1-3% elsewhere); nk16 wins remaining 9 shapes (mostly large-N+K).
+    # Per-shape best configs from a 36-shape × 576-config sweep on MI355X.
+    # Search space: BLOCK_M ∈ {64,128,256}, BLOCK_N ∈ {128,256},
+    # BLOCK_K ∈ {128,256}, GROUP_M ∈ {1,4,8}, num_warps ∈ {4,8},
+    # num_stages ∈ {1,2}, waves_per_eu ∈ {0,2}, matrix_instr_nonkdim ∈ {16,32}.
+    # Per-line comments show the swept median runtime.
     _BEST_CFGS = {
         (1, 2048, 2048): dict(BLOCK_M=128, BLOCK_N=128, BLOCK_K=128, GROUP_M=16, num_warps=4, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32, x_evict_policy="evict_first", xcd_swizzle=4),  # 99.3us  (GM=16,XCD=4 +9.20%)
         (1, 2048, 5120): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32),  # 236.4us
@@ -442,11 +457,9 @@ if _rocm_mxfp8_available:
         (8, 8192, 8192): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=4, num_warps=8, num_stages=2, waves_per_eu=2, matrix_instr_nonkdim=16, x_evict_policy="evict_first"),  # 1248.9us  (X-evict +0.66%)
     }
 
-    # Heuristic for shapes outside the swept grid. The sweep showed BLOCK_N=128
-    # always wins; BLOCK_M/BLOCK_K/num_warps split cleanly on K (small K wants
-    # 128/128/4-warp, large K wants 256/256/8-warp). nk32 is the better
-    # geomean default; the very-large-N+K corners that prefer nk16 are a
-    # minority and not derivable from N/K alone.
+    # Fallback for shapes outside the swept grid: BLOCK_N=128 always wins;
+    # BLOCK_M/BLOCK_K/num_warps split on K (small K -> 128/128/4-warp, large K
+    # -> 256/256/8-warp). nk32 is the better geomean default.
     _FALLBACK_SMALL_K = dict(BLOCK_M=128, BLOCK_N=128, BLOCK_K=128, GROUP_M=8, num_warps=4, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32)
     _FALLBACK_LARGE_K = dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=2, matrix_instr_nonkdim=32)
 
@@ -507,12 +520,10 @@ if _rocm_mxfp8_available:
         if num_warps is None: num_warps = _cfg["num_warps"]
         if num_stages is None: num_stages = _cfg["num_stages"]
         if waves_per_eu is None: waves_per_eu = _cfg["waves_per_eu"]
-        # nk16 is the default for the swept Llama4 grid; per-shape entries
-        # in _BEST_CFGS may override via "matrix_instr_nonkdim".
+        # nk16 default; per-shape _BEST_CFGS entries may override.
         if matrix_instr_nonkdim is None:
             matrix_instr_nonkdim = _cfg.get("matrix_instr_nonkdim", 16)
-        # Cache hints — looked up per-shape; defaults are conservative
-        # (let the runtime decide).
+        # Cache hints looked up per-shape; defaults let the runtime decide.
         if w_cache_modifier is None:
             w_cache_modifier = _cfg.get("w_cache_modifier", None)
         if x_evict_policy is None:
@@ -535,11 +546,9 @@ if _rocm_mxfp8_available:
         w_scales_u8 = weight_scales.view(torch.uint8)
 
         if use_cdna4_scale:
-            # Pick nk16 or nk32 host-side shuffle based on caller's
-            # matrix_instr_nonkdim. nk16 is geomean-best across the swept
-            # Llama4 shapes; nk32 wins ~24% on some DSv3 shapes (per
-            # forward.py historical comments) and is now selectable per-shape
-            # via the tuned _BEST_CFGS table.
+            # Host-side shuffle layout must match matrix_instr_nonkdim:
+            # nk16 is geomean-best, nk32 wins on some shapes (selected
+            # per-shape via _BEST_CFGS).
             if matrix_instr_nonkdim == 32:
                 w_scales_shuf = _shuffle_w_scales_cdna4_nonkdim32(w_scales_u8)
                 x_scales_shuf = _shuffle_x_scales_cdna4_nonkdim32(x_scales_u8)

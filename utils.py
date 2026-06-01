@@ -1,16 +1,29 @@
-# Copyright (c) Meta Platforms, Inc. and affiliates.
-# All rights reserved.
+##############################################################################
+# MIT License
 #
-# This source code is licensed under the BSD 3-Clause license found in the
-# LICENSE file in the root directory of this source tree.
+# Copyright (c) 2026 Advanced Micro Devices, Inc. All Rights Reserved.
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+##############################################################################
 
-"""Small helpers for benchmarking/testing the MXFP8 grouped-GEMM kernel.
-
-Kept intentionally minimal — for production use the equivalents in torchao
-(``torchao.prototype.mx_formats.mx_tensor.to_mx``,
-``torchao.prototype.moe_training.utils.generate_jagged_offs``) are more
-robust; this module trades fidelity for a zero-torchao-dep benchmark.
-"""
+"""MX quantization and jagged-offset helpers for benchmarking and testing the
+grouped-GEMM kernels (zero external quantization dependency)."""
 
 import random
 from typing import Callable
@@ -36,8 +49,7 @@ def generate_jagged_offs(
     E: int, M: int, multiple_of: int = 32, dtype=torch.int32, device="cuda"
 ) -> torch.Tensor:
     """Random sorted cumulative offsets summing to M, each a multiple of
-    ``multiple_of``. Last value is always M. Matches torchao's
-    ``generate_jagged_offs`` semantics.
+    ``multiple_of``. Last value is always M.
     """
     if M % multiple_of != 0:
         raise ValueError(f"M must be divisible by {multiple_of}")
@@ -50,15 +62,10 @@ def generate_jagged_offs(
     return selected.to(dtype).to(device)
 
 
-# MXFP8 quantization -------------------------------------------------------
-#
-# Matches the FLOOR mode of torchao.prototype.mx_formats.mx_tensor.to_mx:
+# MXFP8 quantization (FLOOR scaling) ---------------------------------------
 #   scale_e8m0_unbiased = floor(log2(max_abs)) - F8E4M3_MAX_POW2
-#   stored_u8 = scale_e8m0_unbiased + 127 (e8m0 bias), clamped to [0, 254]
-#
-# F8E4M3_MAX_POW2 = 8 because floor(log2(448)) = 8 (2^8 = 256 <= 448 < 512).
-# e8m0 byte 0 is reserved as NaN; valid range 1..254 (stored as uint8).
-# fp8_e4m3fn max representable = 448.0.
+#   stored_u8           = scale_e8m0_unbiased + 127, clamped to [0, 254]
+# F8E4M3_MAX_POW2 = 8 since floor(log2(448)) = 8; fp8_e4m3fn max = 448.0.
 
 _FP8_E4M3_MAX = 448.0
 _F8E4M3_MAX_POW2 = 8
@@ -68,12 +75,8 @@ def to_mx(
     data: torch.Tensor, elem_dtype=torch.float8_e4m3fn, block_size: int = 32
 ):
     """Quantize ``data`` to MXFP8 (float8_e4m3fn + per-block e8m0 scales)
-    along the last dim. Returns ``(scales_e8m0_as_uint8, data_fp8)``.
-
-    Mirrors torchao's FLOOR scaling mode (the default in
-    ``torchao.prototype.mx_formats.mx_tensor.to_mx``). Extracts the
-    power-of-2 exponent directly from the fp32 bit pattern — same formula
-    ao uses.
+    along the last dim. Returns ``(scales_e8m0_as_uint8, data_fp8)``. The
+    power-of-2 exponent is read directly from the fp32 bit pattern.
     """
     assert elem_dtype is torch.float8_e4m3fn, "only e4m3fn supported here"
     assert data.shape[-1] % block_size == 0, (
@@ -105,16 +108,12 @@ def to_mx(
     return scale_u8.reshape(scale_shape), data_fp8
 
 
-# MXFP4 quantization -------------------------------------------------------
-#
+# MXFP4 quantization (FLOOR scaling) ---------------------------------------
 # OCP MX FP4 = e2m1 elements (4 bits: sign/exp2/mant1) + per-32-block e8m0
-# scales. Same FLOOR scaling mode as ``to_mx`` above, but the element max is
-# 6.0 and floor(log2(6)) = 2, so the per-block exponent is
-#   scale_e8m0_unbiased = floor(log2(max_abs)) - 2.
-# e2m1 represents only 8 magnitudes per sign; quantization is round-to-nearest
-# against the midpoints between them. Packing follows tl.dot_scaled's
-# convention: two fp4 codes per uint8, the first (even-K) element in the low
-# nibble.
+# scales. element max = 6.0, floor(log2(6)) = 2, so the exponent is
+# floor(log2(max_abs)) - 2. e2m1 has 8 magnitudes per sign; values are rounded
+# to the nearest via the midpoint thresholds below. Packing follows
+# tl.dot_scaled: two fp4 codes per uint8, even-K element in the low nibble.
 
 _FP4_E2M1_MAX = 6.0
 _F4E2M1_MAX_POW2 = 2

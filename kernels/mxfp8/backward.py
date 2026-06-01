@@ -1,21 +1,37 @@
-# Copyright (c) Meta Platforms, Inc. and affiliates.
-# All rights reserved.
+##############################################################################
+# MIT License
 #
-# This source code is licensed under the BSD 3-Clause license found in the
-# LICENSE file in the root directory of this source tree.
+# Copyright (c) 2026 Advanced Micro Devices, Inc. All Rights Reserved.
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+##############################################################################
 
 """Backward (weight-gradient) MXFP8 grouped-GEMM kernel for ROCm gfx950+.
 
-Exports ``triton_mxfp8_wgrad`` — computes ``grad_W[g] = grad_output[group_g]^T
-@ input_act[group_g]`` for each expert group. Distinct from the forward
-kernel in ``forward.py``, which covers the fwd and dgrad (input gradient)
-passes (both A @ B^T).
+Exports ``triton_mxfp8_wgrad`` — computes ``grad_W[g] =
+grad_output[group_g]^T @ input_act[group_g]`` per expert group (A^T @ B).
 
 Two execution modes:
   - Direct: one CTA per (BLOCK_N, BLOCK_K, group).
   - Split-M + reduce: partition the per-group M-loop across multiple CTAs,
-    write fp32 partials, then reduce them to bf16. This is useful for low-CTA
-    small-E shapes where each CTA otherwise runs a very long M loop.
+    write fp32 partials, then reduce to bf16. Helps low-CTA small-E shapes
+    where each CTA otherwise runs a very long M loop.
 """
 
 import torch
@@ -26,12 +42,9 @@ if _rocm_mxfp8_available:
     import triton
     import triton.language as tl
 
-    # Reuse the forward's CDNA4 scale-layout helpers — the shuffle math is
-    # dim-agnostic, treating each input as (non_reduction, reduction//32) ->
-    # (non_reduction//32, reduction). For wgrad, the GO scale takes the role
-    # of forward's X scale (M -> N), and the IA scale also takes the role of
-    # forward's X scale (M -> K). Forward's W-scale helpers have an extra E
-    # dim and aren't needed here.
+    # Reuse forward's CDNA4 scale-layout helpers: the shuffle is dim-agnostic,
+    # mapping (non_reduction, reduction//32) -> (non_reduction//32, reduction).
+    # Both GO and IA scales here play the role of forward's X scale.
     from .forward import (
         _unswizzle_mx_scale_cdna4,
         _unswizzle_mx_scale_cdna4_nonkdim32,
@@ -49,17 +62,15 @@ if _rocm_mxfp8_available:
         SCHED_MODE: tl.constexpr,
     ):
         if SCHED_MODE == "GROUP_K":
-            # For each N tile, launch a small run of K tiles contiguously.
-            # This favors GO reuse across neighboring K tiles.
+            # Per N tile, run a contiguous block of K tiles: favors GO reuse.
             num_pid_k_groups = tl.cdiv(num_pid_k, GROUP_K)
             pids_per_n = num_pid_k_groups * GROUP_K
             pid_n = pid // pids_per_n
             pid_in_n = pid % pids_per_n
             pid_k = (pid_in_n // GROUP_K) * GROUP_K + (pid_in_n % GROUP_K)
         elif SCHED_MODE == "GROUP_NK" or SCHED_MODE == "GROUP_NK_K":
-            # Launch a small rectangular N x K cluster contiguously.  This keeps
-            # GO tiles reusable across K tiles and IA tiles reusable across N
-            # tiles within the same L2 working set.
+            # Rectangular N x K cluster: GO reused across K tiles, IA across N
+            # tiles, within one L2 working set.
             num_pid_n_groups = tl.cdiv(num_pid_n, GROUP_N)
             num_pid_k_groups = tl.cdiv(num_pid_k, GROUP_K)
             pids_per_group = GROUP_N * GROUP_K
@@ -74,9 +85,7 @@ if _rocm_mxfp8_available:
                 pid_n = group_n * GROUP_N + (pid_in_group % GROUP_N)
                 pid_k = group_k * GROUP_K + (pid_in_group // GROUP_N)
         elif SCHED_MODE == "GROUP_N":
-            # For each K tile, launch a small run of N tiles contiguously.
-            # This favors IA reuse across neighboring N tiles. This is close
-            # to the natural 3D launch order, but keeps grouping explicit.
+            # Per K tile, run a contiguous block of N tiles: favors IA reuse.
             num_pid_n_groups = tl.cdiv(num_pid_n, GROUP_N)
             pids_per_k = num_pid_n_groups * GROUP_N
             pid_k = pid // pids_per_k
@@ -101,10 +110,10 @@ if _rocm_mxfp8_available:
         BLOCK_M: tl.constexpr,
         SCALE_BLOCK: tl.constexpr,
         # None = plain (N, M//32) / (K, M//32) scale layout.
-        # "CDNA4_SCALE" = pre-shuffled (N//32, M) / (K//32, M) layout; needs
+        # "CDNA4_SCALE" = pre-shuffled (N//32, M) / (K//32, M); needs
         # BLOCK_M >= 256 so MX_SCALE_BLOCK_M >= 8 (unswizzle requires //8).
         SWIZZLE_MX_SCALE: tl.constexpr,
-        # Which CDNA4 unswizzle to use: 16 or 32. Must match matrix_instr_nonkdim.
+        # CDNA4 unswizzle variant (16 or 32); must match matrix_instr_nonkdim.
         SCALE_NONKDIM: tl.constexpr,
         GROUP_N: tl.constexpr,
         GROUP_K: tl.constexpr,
@@ -162,8 +171,8 @@ if _rocm_mxfp8_available:
             )
 
             if SWIZZLE_MX_SCALE == "CDNA4_SCALE":
-                # Shuffled scale layout: GO (N//32, M), IA (K//32, M).
-                # Per-iter tile shape: (BLOCK_N//32, BLOCK_M) / (BLOCK_K//32, BLOCK_M).
+                # Shuffled scales: GO (N//32, M), IA (K//32, M); per-iter tiles
+                # (BLOCK_N//32, BLOCK_M) / (BLOCK_K//32, BLOCK_M).
                 offs_go_n_s = pid_n * SCALE_BLOCK_N + tl.arange(0, SCALE_BLOCK_N)
                 offs_go_m_s = m_base + tl.arange(0, PACKED_MX_BLOCK_M)
                 go_scale_tile = tl.load(
@@ -197,7 +206,7 @@ if _rocm_mxfp8_available:
                 mb_base = m_base // SCALE_BLOCK
                 mb_offs = mb_base + tl.arange(0, MX_SCALE_BLOCK_M)
                 mb_mask = mb_offs < M_SCALES
-                # other=127: e8m0 bias 127 = 2^0 = 1.0 (neutral).
+                # other=127: e8m0 bias 127 = 2^0 = 1.0 (neutral scale).
                 go_scale = tl.load(
                     GO_scales_ptr + n_offs[:, None] * GO_scales_stride_n + mb_offs[None, :] * GO_scales_stride_mb,
                     mask=n_mask[:, None] & mb_mask[None, :], other=127,
@@ -214,9 +223,8 @@ if _rocm_mxfp8_available:
             )
 
         c_mask = n_mask[:, None] & k_mask[None, :]
-        # pid_g promoted to int64: for E*N*K > 2^31 elements (e.g. DSv3
-        # E=128, N=4096, K=7168) the product pid_g*C_stride_e overflows
-        # int32 and the store hits a wild address.
+        # int64 pid_g: for E*N*K > 2^31 (e.g. E=128, N=4096, K=7168),
+        # pid_g*C_stride_e overflows int32 into a wild address.
         tl.store(
             C_ptr + pid_g.to(tl.int64) * C_stride_e
                   + n_offs[:, None] * C_stride_n
@@ -649,13 +657,11 @@ if _rocm_mxfp8_available:
             acc.to(tl.bfloat16), mask=mask,
         )
 
-    # Per-shape best configs from a 15-shape x 192-config DSv3 sweep on MI355X
-    # (tune_driver_wgrad.py / tune_worker_wgrad.py). Search space:
-    # BLOCK_M in {32,64,128}, BLOCK_N,BLOCK_K in {128,256}, num_warps in {4,8},
-    # num_stages in {1,2}, nonkdim in {16,32}, waves_per_eu in {0,2}.
-    # BLOCK_M=64 and nonkdim=32 won every shape. Geomean over baseline: ~+1.5%
-    # (the baseline was already near-optimal for these knobs; the bigger wins
-    # are expected from CDNA4 pre-shuffled scales).
+    # Per-shape best configs from a 15-shape x 192-config DSv3 sweep on MI355X.
+    # Search space: BLOCK_M in {32,64,128}, BLOCK_N,BLOCK_K in {128,256},
+    # num_warps in {4,8}, num_stages in {1,2}, nonkdim in {16,32},
+    # waves_per_eu in {0,2}. BLOCK_M=64 and nonkdim=32 won every shape.
+    # Trailing annotations are the winning config's latency / throughput.
     _BEST_CFGS_WGRAD = {
         (8, 2048, 7168): dict(BLOCK_M=64, BLOCK_N=256, BLOCK_K=256, num_warps=8, num_stages=2, matrix_instr_nonkdim=32, waves_per_eu=0),  # 387.6us 620.5TF
         (8, 4096, 7168): dict(BLOCK_M=64, BLOCK_N=256, BLOCK_K=256, num_warps=8, num_stages=2, matrix_instr_nonkdim=32, waves_per_eu=0),  # 734.3us 655.1TF
@@ -674,9 +680,10 @@ if _rocm_mxfp8_available:
         (128, 7168, 2048): dict(BLOCK_M=64, BLOCK_N=128, BLOCK_K=256, num_warps=4, num_stages=1, matrix_instr_nonkdim=32, waves_per_eu=2),  # 5938.5us 648.0TF
     }
 
-    # Fallback for unseen shapes. Two clusters emerged in the sweep:
-    # - Small-E / balanced: large blocks + deep pipeline (warps=8, stages=2)
-    # - Large-E / asymmetric: smaller K block, shallow pipeline (warps=4, stages=1, wpe=2)
+    # Fallback for unseen shapes. Two clusters from the sweep:
+    # - Balanced (small-E): large blocks, deep pipeline (warps=8, stages=2).
+    # - Asymmetric (large-E): smaller K block, shallow pipeline (warps=4,
+    #   stages=1, wpe=2).
     _FALLBACK_BALANCED = dict(BLOCK_M=64, BLOCK_N=256, BLOCK_K=256, num_warps=8, num_stages=2, matrix_instr_nonkdim=32, waves_per_eu=0)
     _FALLBACK_ASYM = dict(BLOCK_M=64, BLOCK_N=256, BLOCK_K=128, num_warps=4, num_stages=1, matrix_instr_nonkdim=32, waves_per_eu=2)
 
@@ -684,7 +691,7 @@ if _rocm_mxfp8_available:
         cfg = _BEST_CFGS_WGRAD.get((E, N, K))
         if cfg is not None:
             return cfg
-        # Heuristic: large E or N!=K -> asym cluster; else balanced.
+        # Large E or N != K -> asymmetric cluster; else balanced.
         return _FALLBACK_ASYM if (E >= 16 or N != K) else _FALLBACK_BALANCED
 
     def _pick_split_m_wgrad(
@@ -717,8 +724,8 @@ if _rocm_mxfp8_available:
         ia_scale: torch.Tensor,
         group_end_offsets: torch.Tensor,
         out_dtype: torch.dtype = torch.bfloat16,
-        # All tunables default to None -> looked up via _pick_config_wgrad(E,N,K).
-        # An explicit value overrides the lookup (used by the per-shape sweep).
+        # None tunables are looked up via _pick_config_wgrad(E,N,K); an explicit
+        # value overrides the lookup.
         BLOCK_N: int = None,
         BLOCK_K: int = None,
         BLOCK_M: int = None,
@@ -777,12 +784,9 @@ if _rocm_mxfp8_available:
         if sched_mode is None:
             num_pid_n = triton.cdiv(N, BLOCK_N)
             num_pid_k = triton.cdiv(K, BLOCK_K)
-            # Wgrad has two natural L2-reuse directions:
-            # - IA reuse across neighboring N tiles (the original N-fastest order)
-            # - GO reuse across neighboring K tiles
-            # A rectangular cluster exploits both at once: each GO tile is used
-            # across a short run of K tiles, and each IA tile is revisited across
-            # nearby N tiles before the launch walks far away in either axis.
+            # Two L2-reuse directions: IA across N tiles, GO across K tiles.
+            # A rectangular cluster exploits both before walking far in either
+            # axis; pick the cluster shape from the grid aspect ratio.
             if num_pid_n > 1 and num_pid_k > 1:
                 if GROUP_N is None:
                     GROUP_N = 2 if num_pid_n <= 8 else 4
@@ -803,18 +807,13 @@ if _rocm_mxfp8_available:
         if GROUP_N is None: GROUP_N = 1
         if GROUP_K is None: GROUP_K = 1
 
-        # CDNA4_SCALE: pre-shuffle scales into the native MFMA layout, so the
-        # kernel loads one coalesced block per thread instead of the
-        # #blocked -> #linear1 permute chain (6x ds_read_u8 + 3x v_perm_b32).
-        #
-        # The shuffle packs every 8 scale-rows x 32 N-pack = 256 bytes into one
-        # outer block along the M axis. The kernel loads m_base..m_base+BLOCK_M
-        # bytes per iter; for that to land on outer-block boundaries we need
-        # both BLOCK_M and every group_start (i.e. each offs entry) to be a
-        # multiple of 256. Verified empirically: non-256-aligned starts produce
-        # massive errors in g>=1 (g=0 always works since group_start=0).
-        # Cheap host-side gate first (short-circuit avoids the offs sync on
-        # the plain path; the sync is ~30us — meaningful for the smallest shapes).
+        # CDNA4_SCALE: pre-shuffle scales into the native MFMA layout so each
+        # thread loads one coalesced block instead of a permute chain.
+        # The shuffle packs 8 scale-rows x 32 N-pack = 256 bytes into one outer
+        # M-block, so BLOCK_M and every group_start must be multiples of 256 to
+        # land on outer-block boundaries (non-256 starts corrupt g>=1; g=0 is
+        # safe since group_start=0). Cheap scalar gates short-circuit before the
+        # ~30us offs sync, which matters for the smallest shapes.
         use_cdna4_scale = (
             BLOCK_M % 256 == 0
             and M % 256 == 0
