@@ -133,15 +133,21 @@ _LLAMA4_K = [2048, 5120, 8192]
 _LLAMA4_N = [2048, 5120, 8192]
 _LLAMA4_E = [1, 2, 4, 8]
 
-# DSV3 671B shapes — mirror the ao CI bench
-# (benchmarks/prototype/moe_training/benchmark_scaled_grouped_mm_dq.py): N=2048,
-# K=7168, experts (E) in {4,8} (EP degree=32 or 64), M in {32768, 128000}.
-# Tuples are (e, m, n, k). 4 shapes.
+# DSv3 671B: hidden=7168, moe_inter=2048, 256 routed experts. Both MoE
+# grouped GEMMs, separate gate/up: gate/up (N=2048, K=7168) and down
+# (N=7168, K=2048). E in {4,8} = local experts at EP 64/32, M in
+# {32768, 128000}. Tuples are (e, m, n, k).
 _DSV3_EMNK = [
+    # gate/up proj (w1/w3)
     (4, 32768, 2048, 7168),
     (8, 32768, 2048, 7168),
     (4, 128000, 2048, 7168),
     (8, 128000, 2048, 7168),
+    # down proj (w2)
+    (4, 32768, 7168, 2048),
+    (8, 32768, 7168, 2048),
+    (4, 128000, 7168, 2048),
+    (8, 128000, 7168, 2048),
 ]
 
 # DSv3 16B (torchtitan): hidden=2048, moe_inter=1408, 64 routed experts.
