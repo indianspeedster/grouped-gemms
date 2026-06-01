@@ -67,6 +67,22 @@ _DSV3_EMNK = [
     (8, 128000, 2048, 7168),
 ]
 
+# DSv3 16B (torchtitan): hidden=2048, moe_inter=1408, 64 routed experts.
+# Both MoE grouped GEMMs, separate gate/up: gate/up is (N=1408, K=2048),
+# down is (N=2048, K=1408). E∈{4,8} = local experts at EP 16/8.
+_DSV3_16B_EMNK = [
+    # gate/up proj (w1/w3)
+    (4, 32768, 1408, 2048),
+    (8, 32768, 1408, 2048),
+    (4, 128000, 1408, 2048),
+    (8, 128000, 1408, 2048),
+    # down proj (w2)
+    (4, 32768, 2048, 1408),
+    (8, 32768, 2048, 1408),
+    (4, 128000, 2048, 1408),
+    (8, 128000, 2048, 1408),
+]
+
 
 def get_configs(shape_set: str = "llama4") -> List[Cfg]:
     if shape_set == "llama4":
@@ -77,6 +93,8 @@ def get_configs(shape_set: str = "llama4") -> List[Cfg]:
         ]
     if shape_set == "dsv3":
         return [Cfg(e=e, m=m, n=n, k=k) for e, m, n, k in _DSV3_EMNK]
+    if shape_set == "dsv3_16b":
+        return [Cfg(e=e, m=m, n=n, k=k) for e, m, n, k in _DSV3_16B_EMNK]
     raise ValueError(f"unknown shape set: {shape_set}")
 
 
@@ -104,7 +122,8 @@ def run_experiment(cfg: Cfg):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--shapes", default="llama4", choices=("llama4", "dsv3"))
+    parser.add_argument("--shapes", default="llama4",
+                        choices=("llama4", "dsv3", "dsv3_16b"))
     args = parser.parse_args()
     torch.random.manual_seed(123)
     import random
