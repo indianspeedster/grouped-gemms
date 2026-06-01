@@ -21,7 +21,7 @@ triton-lang's triton_kernels matmul_ogs):
 
 import torch
 
-from ._common import _rocm_mxfp8_available
+from .._common import _rocm_mxfp8_available
 
 if _rocm_mxfp8_available:
     import triton

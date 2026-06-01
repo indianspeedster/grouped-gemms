@@ -105,6 +105,85 @@ def to_mx(
     return scale_u8.reshape(scale_shape), data_fp8
 
 
+# MXFP4 quantization -------------------------------------------------------
+#
+# OCP MX FP4 = e2m1 elements (4 bits: sign/exp2/mant1) + per-32-block e8m0
+# scales. Same FLOOR scaling mode as ``to_mx`` above, but the element max is
+# 6.0 and floor(log2(6)) = 2, so the per-block exponent is
+#   scale_e8m0_unbiased = floor(log2(max_abs)) - 2.
+# e2m1 represents only 8 magnitudes per sign; quantization is round-to-nearest
+# against the midpoints between them. Packing follows tl.dot_scaled's
+# convention: two fp4 codes per uint8, the first (even-K) element in the low
+# nibble.
+
+_FP4_E2M1_MAX = 6.0
+_F4E2M1_MAX_POW2 = 2
+
+# Positive e2m1 magnitudes indexed by 3-bit code 0..7.
+_E2M1_MAG = [0.0, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0]
+# Round-to-nearest thresholds = midpoints between consecutive magnitudes.
+_E2M1_THRESH = [0.25, 0.75, 1.25, 1.75, 2.5, 3.5, 5.0]
+
+
+def to_mx_fp4(data: torch.Tensor, block_size: int = 32):
+    """Quantize ``data`` to MXFP4 (packed e2m1 + per-block e8m0 scales) along
+    the last dim. Returns ``(scales_e8m0_as_uint8, data_fp4_packed_u8)`` to
+    mirror ``to_mx``'s ``(scales, data)`` ordering.
+
+    ``data`` last dim must be divisible by ``block_size`` (32) AND even (it is,
+    since 32 is even). Output packed tensor has last dim ``K // 2`` uint8, with
+    the even-K element in the low nibble — exactly what ``tl.dot_scaled``'s
+    ``e2m1`` format and ``lhs_k_pack=True`` expect.
+    """
+    assert data.shape[-1] % block_size == 0, (
+        f"last dim {data.shape[-1]} must be divisible by block_size {block_size}"
+    )
+    orig_shape = data.shape
+    K = orig_shape[-1]
+    data_blocked = data.reshape(-1, K // block_size, block_size).to(torch.float32)
+
+    max_abs = data_blocked.abs().amax(dim=-1, keepdim=True)
+    max_abs = max_abs.clamp(min=torch.finfo(torch.float32).tiny)
+
+    max_abs_int = max_abs.view(torch.int32)
+    extracted_pow2 = ((max_abs_int >> 23) & 0xFF) - 127
+    scale_e8m0_unbiased = extracted_pow2 - _F4E2M1_MAX_POW2
+    scale_u8 = (scale_e8m0_unbiased + 127).clamp(0, 254).to(torch.uint8)
+
+    scale_f32 = torch.exp2(scale_u8.to(torch.float32) - 127)
+    scaled = (data_blocked / scale_f32).clamp(-_FP4_E2M1_MAX, _FP4_E2M1_MAX)
+
+    sign = (scaled < 0).to(torch.uint8)
+    thresh = torch.tensor(_E2M1_THRESH, dtype=torch.float32, device=data.device)
+    code = torch.bucketize(scaled.abs(), thresh).to(torch.uint8)  # 0..7
+    code = (code | (sign << 3)).reshape(orig_shape)  # 4-bit e2m1 code
+
+    # Pack two codes per byte: even-K element -> low nibble.
+    code2 = code.reshape(*orig_shape[:-1], K // 2, 2)
+    packed = (code2[..., 0] | (code2[..., 1] << 4)).contiguous()
+
+    scale_shape = list(orig_shape)
+    scale_shape[-1] = K // block_size
+    return scale_u8.reshape(scale_shape), packed
+
+
+def mxfp4_dequant(packed: torch.Tensor, scale_u8: torch.Tensor, block_size: int = 32):
+    """Inverse of ``to_mx_fp4`` to fp32 — for building bf16 references in tests."""
+    *lead, Khalf = packed.shape
+    K = Khalf * 2
+    lo = (packed & 0x0F).to(torch.long)
+    hi = (packed >> 4).to(torch.long)
+    code = torch.stack((lo, hi), dim=-1).reshape(*lead, K)
+    sign = (code >> 3) & 1
+    mag = torch.tensor(_E2M1_MAG, dtype=torch.float32, device=packed.device)[code & 7]
+    val = mag * torch.where(sign.bool(), -1.0, 1.0)
+    val = val.reshape(-1, K // block_size, block_size)
+    scale_f32 = torch.exp2(
+        scale_u8.reshape(-1, K // block_size, 1).to(torch.float32) - 127
+    )
+    return (val * scale_f32).reshape(*lead, K)
+
+
 def is_MI350() -> bool:
     if getattr(torch.version, "hip", None) is None:
         return False

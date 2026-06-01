@@ -110,16 +110,40 @@ def bench_tensorwise_fp8_grouped_mm(A_bf16, B_nk_bf16, offs) -> float:
     )
 
 
-def get_configs() -> List[ExperimentConfig]:
-    # Llama4 shapes (same 36-shape sweep as the ao CI bench).
-    M = [16640]
-    K = [2048, 5120, 8192]
-    N = [2048, 5120, 8192]
-    E = [1, 2, 4, 8]
-    return [
-        ExperimentConfig(e=e, m=m, n=n, k=k)
-        for e, m, n, k in itertools.product(E, M, N, K)
-    ]
+# Llama4 shapes (same 36-shape sweep as the ao CI bench).
+_LLAMA4_M = [16640]
+_LLAMA4_K = [2048, 5120, 8192]
+_LLAMA4_N = [2048, 5120, 8192]
+_LLAMA4_E = [1, 2, 4, 8]
+
+# DSV3 671B shapes — mirror the ao CI bench
+# (benchmarks/prototype/moe_training/benchmark_scaled_grouped_mm_dq.py): N=2048,
+# K=7168, experts (E) in {4,8} (EP degree=32 or 64), M in {32768, 128000}.
+# Tuples are (e, m, n, k). 4 shapes.
+_DSV3_EMNK = [
+    (4, 32768, 2048, 7168),
+    (8, 32768, 2048, 7168),
+    (4, 128000, 2048, 7168),
+    (8, 128000, 2048, 7168),
+]
+
+SHAPE_SETS = ("llama4", "dsv3")
+
+
+def get_configs(shape_set: str = "llama4") -> List[ExperimentConfig]:
+    if shape_set == "llama4":
+        return [
+            ExperimentConfig(e=e, m=m, n=n, k=k)
+            for e, m, n, k in itertools.product(
+                _LLAMA4_E, _LLAMA4_M, _LLAMA4_N, _LLAMA4_K
+            )
+        ]
+    if shape_set == "dsv3":
+        return [
+            ExperimentConfig(e=e, m=m, n=n, k=k)
+            for e, m, n, k in _DSV3_EMNK
+        ]
+    raise ValueError(f"unknown shape set: {shape_set}")
 
 
 def bench_mxfp8_grouped_mm_rocm(A, B_t, offs, block_size: int = 32) -> float:
@@ -242,17 +266,19 @@ def print_results(experiments: List[Experiment]):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--shapes", default="llama4",
-                        help="Shape set (currently only 'llama4' — 36 shapes)")
+    parser.add_argument("--shapes", default="llama4", choices=SHAPE_SETS,
+                        help="Shape set: 'llama4' (36 shapes) or 'dsv3' (4). "
+                             "dsv3 mirrors the ao CI bench "
+                             "(benchmark_scaled_grouped_mm_dq.py): DSV3 671B "
+                             "N=2048, K=7168, E in {4,8}, M in {32768,128000}.")
     args = parser.parse_args()
-    del args  # only one shape set for now
 
     torch.random.manual_seed(123)
     # generate_jagged_offs uses Python's random.sample — seed that too so
     # runs are deterministic across invocations.
     import random
     random.seed(123)
-    configs = get_configs()
+    configs = get_configs(args.shapes)
     results = [Experiment(config=c, result=run_experiment(c)) for c in tqdm(configs)]
     print_results(results)
 

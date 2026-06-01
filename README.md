@@ -37,19 +37,26 @@ SQNR, bench geomean ≈ 1.4× over bf16.
 
 | Path | Purpose |
 | --- | --- |
-| `kernels/forward.py` | `triton_mxfp8_grouped_mm` — forward + dgrad (A @ B^T per group) |
-| `kernels/backward.py` | `triton_mxfp8_wgrad` — weight gradient (A^T @ B per group) |
-| `kernels/_common.py` | ROCm availability probe shared by both kernels |
-| `kernels/__init__.py` | Re-exports both entry points |
-| `utils.py` | Minimal `to_mx`, `generate_jagged_offs`, bench helper |
-| `bench.py` | 36-shape Llama4 bf16-vs-MXFP8 bench (mirrors torchao CI) |
-| `test_correctness.py` | Sanity check vs bf16 reference on small shapes |
+| `kernels/mxfp8/forward.py` | `triton_mxfp8_grouped_mm` — MXFP8 forward + dgrad (A @ B^T per group) |
+| `kernels/mxfp8/backward.py` | `triton_mxfp8_wgrad` — MXFP8 weight gradient (A^T @ B per group) |
+| `kernels/mxfp4/forward.py` | `triton_mxfp4_grouped_mm` — MXFP4 (e2m1) forward + dgrad (A @ B^T per group) |
+| `kernels/_common.py` | ROCm availability probe shared by the subpackages |
+| `kernels/__init__.py` | Re-exports the entry points (also under `kernels.mxfp8` / `kernels.mxfp4`) |
+| `utils.py` | Minimal `to_mx`, `to_mx_fp4`, `generate_jagged_offs`, bench helper |
+| `bench.py` / `bench_fp4.py` | Llama4 + DSv3 bf16-vs-MXFP8 / MXFP4 benches (`--shapes {llama4,dsv3}`) |
+| `test_correctness.py` / `test_correctness_fp4.py` | Sanity checks vs bf16 reference on small shapes |
 
 No torchao dependency at runtime. Import from the package:
 
 ```python
-from kernels import triton_mxfp8_grouped_mm, triton_mxfp8_wgrad
+from kernels import triton_mxfp8_grouped_mm, triton_mxfp8_wgrad, triton_mxfp4_grouped_mm
+# or from the subpackages directly:
+from kernels.mxfp4 import triton_mxfp4_grouped_mm
 ```
+
+The MXFP4 kernel reuses every scheduling optimization from the MXFP8 forward
+(XCD swizzle, GROUP_M L2 reuse, packed per-tile expert lookup, CDNA4-native
+pre-shuffled scale layout); operands are e2m1 packed two-per-byte along K.
 
 ## Requirements
 
