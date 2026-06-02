@@ -209,7 +209,12 @@ if _rocm_mxfp8_available:
         #   back to (BLOCK_M, MX_SCALE_BLOCK_K) before tl.dot_scaled.
         if SWIZZLE_MX_SCALE == "CDNA4_SCALE":
             XMxScale += (start_m // 32) * stride_x_mx_m
-            offs_x_m_scale = BLOCK_M // NON_K_PRESHUFFLE_BLOCK_SIZE * block_id + tl.arange(0, SCALE_BLOCK_M)
+            # Wrap to the expert's M//32 scale rows (mirrors the operand's
+            # % M) so a partial last tile can't read past the scale tensor.
+            offs_x_m_scale = (
+                BLOCK_M // NON_K_PRESHUFFLE_BLOCK_SIZE * block_id
+                + tl.arange(0, SCALE_BLOCK_M)
+            ) % (M // NON_K_PRESHUFFLE_BLOCK_SIZE)
             offs_x_k_scale = tl.arange(0, PACKED_MX_BLOCK)
         else:
             XMxScale += start_m * stride_x_mx_m
@@ -538,6 +543,9 @@ if _rocm_mxfp8_available:
         # Requires BLOCK_K >= 256, N/M % 32 == 0, K % 256 == 0.
         use_cdna4_scale = (
             BLOCK_K >= 256 and K % 256 == 0 and N % 32 == 0 and M % 32 == 0
+            # N must tile evenly: the CDNA4 scale-N offset is unmasked, so a
+            # partial N-tile would read past the shuffled scale tensor (OOB).
+            and N % BLOCK_N == 0
         )
 
         # Column-major view of W (E, K, N) with stride(-2)==1.

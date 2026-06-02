@@ -165,7 +165,12 @@ if _rocm_mxfp8_available:
         # X scale pointers (identical layout to MXFP8).
         if SWIZZLE_MX_SCALE == "CDNA4_SCALE":
             XMxScale += (start_m // 32) * stride_x_mx_m
-            offs_x_m_scale = BLOCK_M // NON_K_PRESHUFFLE_BLOCK_SIZE * block_id + tl.arange(0, SCALE_BLOCK_M)
+            # Wrap to the expert's M//32 scale rows (mirrors the operand's
+            # % M) so a partial last tile can't read past the scale tensor.
+            offs_x_m_scale = (
+                BLOCK_M // NON_K_PRESHUFFLE_BLOCK_SIZE * block_id
+                + tl.arange(0, SCALE_BLOCK_M)
+            ) % (M // NON_K_PRESHUFFLE_BLOCK_SIZE)
             offs_x_k_scale = tl.arange(0, PACKED_MX_BLOCK)
         else:
             XMxScale += start_m * stride_x_mx_m
@@ -315,16 +320,33 @@ if _rocm_mxfp8_available:
         (8, 8192, 8192): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=512, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=2, matrix_instr_nonkdim=32),  # 753.4us
     }
 
-    # DSv3 671B shapes (N=2048, K=7168, E∈{4,8}, M∈{32768,128000}) from the
-    # same 576-config sweep (tune_driver_fp4.py --shapes dsv3). Keyed on
-    # (E, M, N, K) because the two M values share N/K. Unlike the Llama4 grid,
-    # the narrow N=2048 + huge M regime prefers BLOCK_N=256; the M=128000
-    # shapes also flip to nonkdim=16 + BLOCK_M=256.
+    # DSv3 671B (hidden=7168, moe_inter=2048) MoE grouped GEMMs from the
+    # 576-config sweep (tune_driver_fp4.py --shapes dsv3), keyed (E, M, N, K).
+    # Both projections: gate/up (N=2048, K=7168) and down (N=7168, K=2048).
     _BEST_CFGS_FP4_DSV3 = {
-        (4, 32768, 2048, 7168): dict(BLOCK_M=128, BLOCK_N=256, BLOCK_K=256, GROUP_M=4, num_warps=8, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32),  # 407.2us
-        (8, 32768, 2048, 7168): dict(BLOCK_M=128, BLOCK_N=256, BLOCK_K=512, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=2, matrix_instr_nonkdim=32),  # 358.7us
-        (4, 128000, 2048, 7168): dict(BLOCK_M=256, BLOCK_N=256, BLOCK_K=256, GROUP_M=4, num_warps=4, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=16),  # 1155.3us
-        (8, 128000, 2048, 7168): dict(BLOCK_M=256, BLOCK_N=256, BLOCK_K=256, GROUP_M=4, num_warps=4, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=16),  # 1152.8us
+        (4, 32768, 2048, 7168): dict(BLOCK_M=128, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=4, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32),  # 337.8us
+        (8, 32768, 2048, 7168): dict(BLOCK_M=128, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=4, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32),  # 353.7us
+        (4, 128000, 2048, 7168): dict(BLOCK_M=256, BLOCK_N=256, BLOCK_K=256, GROUP_M=4, num_warps=4, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=16),  # 1139.9us
+        (8, 128000, 2048, 7168): dict(BLOCK_M=256, BLOCK_N=256, BLOCK_K=256, GROUP_M=4, num_warps=4, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=16),  # 1139.6us
+        (4, 32768, 7168, 2048): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=4, num_warps=4, num_stages=1, waves_per_eu=2, matrix_instr_nonkdim=32),  # 365.0us
+        (8, 32768, 7168, 2048): dict(BLOCK_M=128, BLOCK_N=128, BLOCK_K=256, GROUP_M=4, num_warps=4, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32),  # 387.7us
+        (4, 128000, 7168, 2048): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=4, num_warps=4, num_stages=1, waves_per_eu=0, matrix_instr_nonkdim=32),  # 1354.5us
+        (8, 128000, 7168, 2048): dict(BLOCK_M=256, BLOCK_N=256, BLOCK_K=256, GROUP_M=4, num_warps=4, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32),  # 1356.4us
+    }
+
+    # DSv3 16B (hidden=2048, moe_inter=1408) MoE grouped GEMMs, keyed
+    # (E, M, N, K). gate/up (N=1408, K=2048) and down (N=2048, K=1408).
+    # N=1408 prefers BLOCK_N=128 (1408=11*128); the down-proj K=1408 can't
+    # use the CDNA4 scale path (K%256!=0) so it favors BLOCK_K=128.
+    _BEST_CFGS_FP4_DSV3_16B = {
+        (4, 32768, 1408, 2048): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=128, GROUP_M=8, num_warps=4, num_stages=2, waves_per_eu=2, matrix_instr_nonkdim=32),  # 88.8us
+        (8, 32768, 1408, 2048): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=128, GROUP_M=8, num_warps=4, num_stages=2, waves_per_eu=2, matrix_instr_nonkdim=32),  # 91.7us
+        (4, 128000, 1408, 2048): dict(BLOCK_M=256, BLOCK_N=256, BLOCK_K=256, GROUP_M=4, num_warps=4, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32),  # 298.4us
+        (8, 128000, 1408, 2048): dict(BLOCK_M=256, BLOCK_N=256, BLOCK_K=256, GROUP_M=4, num_warps=8, num_stages=2, waves_per_eu=2, matrix_instr_nonkdim=32),  # 294.8us
+        (4, 32768, 2048, 1408): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=128, GROUP_M=8, num_warps=4, num_stages=2, waves_per_eu=2, matrix_instr_nonkdim=32),  # 104.5us
+        (8, 32768, 2048, 1408): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=128, GROUP_M=8, num_warps=4, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32),  # 107.4us
+        (4, 128000, 2048, 1408): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=128, GROUP_M=8, num_warps=4, num_stages=2, waves_per_eu=2, matrix_instr_nonkdim=32),  # 343.8us
+        (8, 128000, 2048, 1408): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=128, GROUP_M=8, num_warps=4, num_stages=2, waves_per_eu=2, matrix_instr_nonkdim=32),  # 349.9us
     }
 
     # Fallback for shapes outside both swept grids, distilled from the Llama4
@@ -336,9 +358,12 @@ if _rocm_mxfp8_available:
 
     def _pick_config(E: int, M: int, N: int, K: int) -> dict:
         """Per-shape best config from the swept grids; coarse fallback for
-        unseen shapes. The DSv3 table is keyed (E,M,N,K) and tried first; the
+        unseen shapes. The DSv3 tables are keyed (E,M,N,K) and tried first; the
         Llama4 table is keyed (E,N,K) (single M=16640 regime)."""
         cfg = _BEST_CFGS_FP4_DSV3.get((E, M, N, K))
+        if cfg is not None:
+            return cfg
+        cfg = _BEST_CFGS_FP4_DSV3_16B.get((E, M, N, K))
         if cfg is not None:
             return cfg
         cfg = _BEST_CFGS_FP4.get((E, N, K))
@@ -410,6 +435,9 @@ if _rocm_mxfp8_available:
         # logical K (scales are per-32-logical-element, layout-identical).
         use_cdna4_scale = (
             BLOCK_K >= 256 and K % 256 == 0 and N % 32 == 0 and M % 32 == 0
+            # N must tile evenly: the CDNA4 scale-N offset is unmasked, so a
+            # partial N-tile would read past the shuffled scale tensor (OOB).
+            and N % BLOCK_N == 0
         )
 
         # Column-major view of packed W (E, K//2, N) with stride(-2)==1.
