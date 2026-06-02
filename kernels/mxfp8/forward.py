@@ -462,15 +462,51 @@ if _rocm_mxfp8_available:
         (8, 8192, 8192): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=4, num_warps=8, num_stages=2, waves_per_eu=2, matrix_instr_nonkdim=16, x_evict_policy="evict_first"),  # 1248.9us  (X-evict +0.66%)
     }
 
-    # Fallback for shapes outside the swept grid: BLOCK_N=128 always wins;
+    # DSv3 671B (hidden=7168, moe_inter=2048) MoE grouped GEMMs from the MXFP8
+    # 384-config sweep (tuning/tune_driver_mxfp8.py --shapes dsv3), keyed
+    # (E, M, N, K). gate/up (N=2048, K=7168) and down (N=7168, K=2048).
+    _BEST_CFGS_DSV3 = {
+        (4, 32768, 2048, 7168): dict(BLOCK_M=128, BLOCK_N=256, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32),  # 608.7us
+        (8, 32768, 2048, 7168): dict(BLOCK_M=128, BLOCK_N=256, BLOCK_K=256, GROUP_M=4, num_warps=8, num_stages=2, waves_per_eu=2, matrix_instr_nonkdim=32),  # 638.5us
+        (4, 128000, 2048, 7168): dict(BLOCK_M=256, BLOCK_N=256, BLOCK_K=128, GROUP_M=4, num_warps=4, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=16),  # 2036.7us
+        (8, 128000, 2048, 7168): dict(BLOCK_M=256, BLOCK_N=256, BLOCK_K=128, GROUP_M=4, num_warps=4, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=16),  # 2097.2us
+        (4, 32768, 7168, 2048): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32),  # 654.9us
+        (8, 32768, 7168, 2048): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=4, num_warps=8, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32),  # 661.1us
+        (4, 128000, 7168, 2048): dict(BLOCK_M=128, BLOCK_N=256, BLOCK_K=256, GROUP_M=4, num_warps=8, num_stages=2, waves_per_eu=2, matrix_instr_nonkdim=32),  # 2285.3us
+        (8, 128000, 7168, 2048): dict(BLOCK_M=128, BLOCK_N=256, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32),  # 2312.0us
+    }
+
+    # DSv3 16B (hidden=2048, moe_inter=1408) MoE grouped GEMMs from the MXFP8
+    # 384-config sweep (tuning/tune_driver_mxfp8.py --shapes dsv3_16b), keyed
+    # (E, M, N, K). gate/up (N=1408, K=2048) and down (N=2048, K=1408); all
+    # favor BLOCK_N=128, BLOCK_K=128, nonkdim=32.
+    _BEST_CFGS_DSV3_16B = {
+        (4, 32768, 1408, 2048): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=128, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32),  # 145.1us
+        (8, 32768, 1408, 2048): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=128, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32),  # 154.9us
+        (4, 128000, 1408, 2048): dict(BLOCK_M=128, BLOCK_N=128, BLOCK_K=128, GROUP_M=8, num_warps=4, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32),  # 505.7us
+        (8, 128000, 1408, 2048): dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=128, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32),  # 491.7us
+        (4, 32768, 2048, 1408): dict(BLOCK_M=128, BLOCK_N=128, BLOCK_K=128, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32),  # 157.0us
+        (8, 32768, 2048, 1408): dict(BLOCK_M=128, BLOCK_N=128, BLOCK_K=128, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32),  # 159.2us
+        (4, 128000, 2048, 1408): dict(BLOCK_M=128, BLOCK_N=128, BLOCK_K=128, GROUP_M=8, num_warps=4, num_stages=1, waves_per_eu=0, matrix_instr_nonkdim=32),  # 539.4us
+        (8, 128000, 2048, 1408): dict(BLOCK_M=128, BLOCK_N=128, BLOCK_K=128, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32),  # 542.1us
+    }
+
+    # Fallback for shapes outside the swept grids: BLOCK_N=128 always wins;
     # BLOCK_M/BLOCK_K/num_warps split on K (small K -> 128/128/4-warp, large K
     # -> 256/256/8-warp). nk32 is the better geomean default.
     _FALLBACK_SMALL_K = dict(BLOCK_M=128, BLOCK_N=128, BLOCK_K=128, GROUP_M=8, num_warps=4, num_stages=2, waves_per_eu=0, matrix_instr_nonkdim=32)
     _FALLBACK_LARGE_K = dict(BLOCK_M=256, BLOCK_N=128, BLOCK_K=256, GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=2, matrix_instr_nonkdim=32)
 
-    def _pick_config(E: int, N: int, K: int) -> dict:
-        """Per-shape best config from the swept Llama4 grid; coarse fallback
-        for unseen shapes."""
+    def _pick_config(E: int, M: int, N: int, K: int) -> dict:
+        """Per-shape best config from the swept grids; coarse fallback for
+        unseen shapes. DSv3 tables are keyed (E,M,N,K) and tried first; the
+        Llama4 table is keyed (E,N,K) (single M=16640 regime)."""
+        cfg = _BEST_CFGS_DSV3.get((E, M, N, K))
+        if cfg is not None:
+            return cfg
+        cfg = _BEST_CFGS_DSV3_16B.get((E, M, N, K))
+        if cfg is not None:
+            return cfg
         cfg = _BEST_CFGS.get((E, N, K))
         if cfg is not None:
             return cfg
@@ -517,7 +553,7 @@ if _rocm_mxfp8_available:
         E, N, K2 = weight.shape
         assert K == K2, f"K mismatch: A={K}, B={K2}"
 
-        _cfg = _pick_config(E, N, K)
+        _cfg = _pick_config(E, M, N, K)
         if BLOCK_M is None: BLOCK_M = _cfg["BLOCK_M"]
         if BLOCK_N is None: BLOCK_N = _cfg["BLOCK_N"]
         if BLOCK_K is None: BLOCK_K = _cfg["BLOCK_K"]
