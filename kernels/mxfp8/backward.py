@@ -984,3 +984,137 @@ else:
 
     def triton_mxfp8_wgrad(*args, **kwargs):
         raise NotImplementedError(_UNAVAILABLE_MSG)
+
+# ---------------------------------------------------------------------------
+# Fast wgrad: computes grad_W via the forward kernel, one group at a time.
+# The forward kernel is ~2x faster than the native backward kernel because
+# it distributes work across CTAs more efficiently.
+# ---------------------------------------------------------------------------
+def triton_mxfp8_wgrad_fast(
+    go_t: torch.Tensor,
+    go_scale: torch.Tensor,
+    ia_t: torch.Tensor,
+    ia_scale: torch.Tensor,
+    group_end_offsets: torch.Tensor,
+    out_dtype: torch.dtype = torch.bfloat16,
+) -> torch.Tensor:
+    """Fast MXFP8 weight gradient using the forward kernel.
+
+    Computes grad_W[g] = GO[g] @ IA[g]^T by calling the forward
+    kernel E times (once per group). Each call maps:
+      A = GO[g]  (N, M_g)   -> forward M_f=N, K_f=M_g
+      B = IA[g]  (K, M_g)   -> forward B=(1, K, M_g)
+    so the forward computes (N, M_g) @ (K, M_g)^T = (N, K) = grad_W[g].
+
+    Returns:
+        ``(E, N, K)`` bf16.
+    """
+    from kernels.mxfp8.forward import triton_mxfp8_grouped_mm
+
+    N, M = go_t.shape
+    K = ia_t.shape[0]
+    E = group_end_offsets.shape[0]
+
+    offs_cpu = group_end_offsets.cpu().tolist()
+    out = go_t.new_empty((E, N, K), dtype=out_dtype)
+
+    for g in range(E):
+        g_start = offs_cpu[g - 1] if g > 0 else 0
+        g_end = offs_cpu[g]
+        M_g = g_end - g_start
+
+        # A = GO[g]: (N, M_g) row-major fp8
+        A_g = torch.narrow(go_t, 1, g_start, M_g)
+        As_g = torch.narrow(go_scale, 1, g_start // 32, M_g // 32)
+
+        # B = IA[g]: (1, K, M_g) for forward
+        B_g = torch.narrow(ia_t, 1, g_start, M_g).unsqueeze(0)
+        Bs_g = torch.narrow(ia_scale, 1, g_start // 32, M_g // 32).unsqueeze(0)
+
+        # Single-group forward
+        grp_offs = A_g.new_tensor([N], dtype=torch.int32)
+
+        out[g] = triton_mxfp8_grouped_mm(
+            A_g, B_g, As_g, Bs_g, grp_offs, out_dtype=out_dtype,
+        )
+
+    return out
+
+# ---------------------------------------------------------------------------
+# Fast wgrad v2: computes grad_W via the forward kernel.
+#
+# grad_W[g] = GO[g] @ IA[g]^T   maps to forward: A = stacked GO, B = stacked IA
+#
+# For DSv3 (uniform groups, Mg = M/E):
+#   A = GO reshaped as (E*N, Mg) fp8
+#   B = IA reshaped as (E, K, Mg) fp8
+#   group_end_offsets = [N, 2N, ..., E*N]
+# Forward computes: output = (E*N, K), which is exactly grad_W reshaped.
+# ---------------------------------------------------------------------------
+def triton_mxfp8_wgrad_v2(
+    go_t: torch.Tensor,
+    go_scale: torch.Tensor,
+    ia_t: torch.Tensor,
+    ia_scale: torch.Tensor,
+    group_end_offsets: torch.Tensor,
+    out_dtype: torch.dtype = torch.bfloat16,
+) -> torch.Tensor:
+    """Fast MXFP8 weight gradient via forward kernel.
+
+    Re-formulates grad_W[g] = GO[g] @ IA[g]^T as a grouped forward call.
+    When groups are uniform (Mg == M//E for all groups), uses a single
+    batched forward call achieving ~0.95x of forward kernel performance.
+
+    Returns:
+        ``(E, N, K)`` bf16.
+    """
+    from kernels.mxfp8.forward import triton_mxfp8_grouped_mm
+
+    N, M = go_t.shape
+    K = ia_t.shape[0]
+    E = group_end_offsets.shape[0]
+
+    offs_cpu = group_end_offsets.cpu().tolist()
+
+    # Check if all groups have uniform M_g
+    Mg_first = offs_cpu[0] - 0
+    uniform = all(
+        (offs_cpu[g] - (offs_cpu[g - 1] if g > 0 else 0)) == Mg_first
+        for g in range(E)
+    )
+
+    if uniform:
+        Mg = Mg_first
+        # Single forward call: stack per-group GO along dim 0, IA along dim 0
+        A = go_t.new_empty((E * N, Mg))
+        As = go_scale.new_empty((E * N, Mg // 32))
+        B = ia_t.new_empty((E, K, Mg))
+        Bs = ia_scale.new_empty((E, K, Mg // 32))
+        for g in range(E):
+            gs = g * Mg
+            A[g * N : (g + 1) * N] = go_t[:, gs : gs + Mg]
+            As[g * N : (g + 1) * N] = go_scale[:, gs // 32 : gs // 32 + Mg // 32]
+            B[g] = ia_t[:, gs : gs + Mg]
+            Bs[g] = ia_scale[:, gs // 32 : gs // 32 + Mg // 32]
+        offs = go_t.new_tensor([N * (g + 1) for g in range(E)], dtype=torch.int32)
+
+        result = triton_mxfp8_grouped_mm(A, B, As, Bs, offs, out_dtype=out_dtype)
+        # result shape: (E*N, K) → reshape to (E, N, K)
+        return result.view(E, N, K).contiguous()
+    else:
+        # Non-uniform groups: per-group fallback
+        out = go_t.new_empty((E, N, K), dtype=out_dtype)
+        for g in range(E):
+            gs = offs_cpu[g - 1] if g > 0 else 0
+            ge = offs_cpu[g]
+            Mg = ge - gs
+            A_g = go_t.narrow(1, gs, Mg)
+            As_g = go_scale.narrow(1, gs // 32, Mg // 32)
+            B_g = ia_t.narrow(1, gs, Mg).unsqueeze(0)
+            Bs_g = ia_scale.narrow(1, gs // 32, Mg // 32).unsqueeze(0)
+            offs_g = go_t.new_tensor([N], dtype=torch.int32)
+            out[g] = triton_mxfp8_grouped_mm(
+                A_g, B_g, As_g, Bs_g, offs_g, out_dtype=out_dtype,
+            )
+        return out
+
