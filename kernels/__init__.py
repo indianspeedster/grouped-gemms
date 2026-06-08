@@ -39,11 +39,22 @@ Public entry points (re-exported here for convenience):
 
 from ._common import _rocm_mxfp8_available
 from .mxfp4 import triton_mxfp4_grouped_mm
-from .mxfp8 import triton_mxfp8_grouped_mm, triton_mxfp8_wgrad
+from .mxfp8 import (
+    triton_mxfp8_grouped_mm,
+    triton_mxfp8_grouped_mm_compile,
+    triton_mxfp8_wgrad,
+    triton_mxfp8_wgrad_compile,
+    triton_mxfp8_wgrad_v2,
+    triton_mxfp8_wgrad_v2_compile,
+)
 
 __all__ = [
     "triton_mxfp8_grouped_mm",
+    "triton_mxfp8_grouped_mm_compile",
     "triton_mxfp8_wgrad",
+    "triton_mxfp8_wgrad_compile",
+    "triton_mxfp8_wgrad_v2",
+    "triton_mxfp8_wgrad_v2_compile",
     "triton_mxfp4_grouped_mm",
     "_rocm_mxfp8_available",
 ]

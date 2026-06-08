@@ -741,6 +741,10 @@ if _rocm_mxfp8_available:
         cta_group_k: int = 1,
         split_reduce_mode: str = "partials",
         max_split_m_partial_bytes: int = 1 << 30,
+        # None -> decide the CDNA4 scale fast-path by reading the offsets
+        # (a ~30us D->H sync). Pass True/False to assert it host-side instead
+        # and skip the sync (used by the compile-friendly wrapper).
+        offsets_aligned_256: bool = None,
     ) -> torch.Tensor:
         """MXFP8 weight gradient: ``grad_W[g] = grad_output[group_g]^T @ input_act[group_g]``.
 
@@ -814,12 +818,19 @@ if _rocm_mxfp8_available:
         # land on outer-block boundaries (non-256 starts corrupt g>=1; g=0 is
         # safe since group_start=0). Cheap scalar gates short-circuit before the
         # ~30us offs sync, which matters for the smallest shapes.
+        # offsets_aligned_256: caller-asserted to avoid the D->H sync. When
+        # None we fall back to reading the offsets (eager-friendly default).
+        offs_aligned = (
+            offsets_aligned_256
+            if offsets_aligned_256 is not None
+            else bool(((group_end_offsets % 256) == 0).all().item())
+        )
         use_cdna4_scale = (
             BLOCK_M % 256 == 0
             and M % 256 == 0
             and N % 32 == 0
             and K % 32 == 0
-            and bool(((group_end_offsets % 256) == 0).all().item())
+            and offs_aligned
         )
         go_scale_u8 = go_scale.view(torch.uint8)
         ia_scale_u8 = ia_scale.view(torch.uint8)
@@ -1118,3 +1129,176 @@ def triton_mxfp8_wgrad_v2(
             )
         return out
 
+
+# ---------------------------------------------------------------------------
+# Compile-friendly wgrad v2.
+#
+# triton_mxfp8_wgrad_v2 above is correct but torch.compile-hostile: it does a
+# group_end_offsets.cpu().tolist() (D->H sync + graph break), branches on
+# tensor *contents* (`uniform = all(...)`), and builds the stacked operands
+# with a data-dependent Python loop + narrow() (data-dependent shapes).
+#
+# Key observation: for UNIFORM groups the per-group stacking needs no host
+# reads — Mg = M // E and every slice base g*Mg, plus the forward offsets
+# (N, 2N, ...), are derivable from shapes alone, so the whole path is
+# sync-free (no .cpu()/.item(), no branch on tensor contents). We wrap it in a
+# torch.library.custom_op so torch.compile sees a single clean op boundary
+# (fullgraph=True traces with zero graph breaks) with a fake/meta impl for
+# shape propagation. The uniform path is also CUDA-graph capturable
+# (mode="reduce-overhead") because nothing inside touches the host.
+#
+# Caller must assert `uniform` (it is a static property of the routing, known
+# without reading the tensor — e.g. DSv3 always has Mg = M//E). The jagged
+# branch still runs eagerly inside the op (correct, but not sync-free).
+# ---------------------------------------------------------------------------
+def _wgrad_v2_uniform_impl(go_t, go_scale, ia_t, ia_scale, E, out_dtype):
+    """Sync-free uniform-group wgrad via a single batched forward call.
+
+    Builds the stacked operands with shape-derived slice bases only (no
+    .item(), no offset reads, no data-dependent shapes). Equivalent to the
+    uniform branch of triton_mxfp8_wgrad_v2.
+    """
+    from kernels.mxfp8.forward import triton_mxfp8_grouped_mm
+
+    N, M = go_t.shape
+    K = ia_t.shape[0]
+    Mg = M // E
+    Mg32 = Mg // 32
+
+    # Stack per-group operands. The loop bound E and every slice base g*Mg are
+    # shape-derived (Mg = M // E), not read from the offsets tensor, so this is
+    # sync-free and traces cleanly when run inside the opaque custom op. We keep
+    # the explicit loop (vs a single permute->contiguous) because E contiguous
+    # block-copies are ~12% faster than one strided transpose-copy.
+    A = go_t.new_empty((E * N, Mg))
+    As = go_scale.new_empty((E * N, Mg32))
+    B = ia_t.new_empty((E, K, Mg))
+    Bs = ia_scale.new_empty((E, K, Mg32))
+    for g in range(E):
+        gs = g * Mg
+        A[g * N : (g + 1) * N] = go_t[:, gs : gs + Mg]
+        As[g * N : (g + 1) * N] = go_scale[:, gs // 32 : gs // 32 + Mg32]
+        B[g] = ia_t[:, gs : gs + Mg]
+        Bs[g] = ia_scale[:, gs // 32 : gs // 32 + Mg32]
+    offs = torch.arange(1, E + 1, device=go_t.device, dtype=torch.int32) * N
+
+    result = triton_mxfp8_grouped_mm(A, B, As, Bs, offs, out_dtype=out_dtype)
+    return result.reshape(E, N, K)
+
+
+if _rocm_mxfp8_available:
+
+    @torch.library.custom_op("mxfp8::wgrad_v2", mutates_args=())
+    def wgrad_v2_op(
+        go_t: torch.Tensor,
+        go_scale: torch.Tensor,
+        ia_t: torch.Tensor,
+        ia_scale: torch.Tensor,
+        group_end_offsets: torch.Tensor,
+        uniform: bool,
+        out_dtype: torch.dtype,
+    ) -> torch.Tensor:
+        E = group_end_offsets.shape[0]
+        if uniform:
+            return _wgrad_v2_uniform_impl(
+                go_t, go_scale, ia_t, ia_scale, E, out_dtype
+            )
+        # Jagged fallback: eager, reads offsets on the host (opaque inside the
+        # custom op, so it doesn't break the surrounding graph).
+        return triton_mxfp8_wgrad_v2(
+            go_t, go_scale, ia_t, ia_scale, group_end_offsets, out_dtype
+        )
+
+    @wgrad_v2_op.register_fake
+    def _wgrad_v2_op_fake(
+        go_t, go_scale, ia_t, ia_scale, group_end_offsets, uniform, out_dtype
+    ):
+        N = go_t.shape[0]
+        K = ia_t.shape[0]
+        E = group_end_offsets.shape[0]
+        return go_t.new_empty((E, N, K), dtype=out_dtype)
+
+
+def triton_mxfp8_wgrad_v2_compile(
+    go_t: torch.Tensor,
+    go_scale: torch.Tensor,
+    ia_t: torch.Tensor,
+    ia_scale: torch.Tensor,
+    group_end_offsets: torch.Tensor,
+    out_dtype: torch.dtype = torch.bfloat16,
+    uniform: bool = True,
+) -> torch.Tensor:
+    """torch.compile-friendly entry point for the forward-reformulated wgrad.
+
+    Dispatches to the ``mxfp8::wgrad_v2`` custom op, which traces under
+    ``torch.compile(fullgraph=True)`` with zero graph breaks. Pass
+    ``uniform=True`` (the default) when every group has Mg == M // E — this is
+    a static property of the routing and avoids any host sync.
+
+    Returns:
+        ``(E, N, K)`` bf16.
+    """
+    return torch.ops.mxfp8.wgrad_v2(
+        go_t, go_scale, ia_t, ia_scale, group_end_offsets, uniform, out_dtype
+    )
+
+
+
+# ---------------------------------------------------------------------------
+# Compile-friendly native wgrad (the direct A^T @ B kernel, not the forward
+# reformulation). Same custom-op treatment: an opaque boundary so dynamo never
+# tries to trace the raw triton launch, plus a fake impl for shape prop. The
+# offset 256-alignment is passed as a flag so the op stays sync-free.
+# ---------------------------------------------------------------------------
+if _rocm_mxfp8_available:
+
+    @torch.library.custom_op("mxfp8::wgrad", mutates_args=())
+    def wgrad_op(
+        go_t: torch.Tensor,
+        go_scale: torch.Tensor,
+        ia_t: torch.Tensor,
+        ia_scale: torch.Tensor,
+        group_end_offsets: torch.Tensor,
+        offsets_aligned_256: bool,
+        out_dtype: torch.dtype,
+    ) -> torch.Tensor:
+        return triton_mxfp8_wgrad(
+            go_t, go_scale, ia_t, ia_scale, group_end_offsets,
+            out_dtype=out_dtype, offsets_aligned_256=offsets_aligned_256,
+        )
+
+    @wgrad_op.register_fake
+    def _wgrad_op_fake(
+        go_t, go_scale, ia_t, ia_scale, group_end_offsets,
+        offsets_aligned_256, out_dtype,
+    ):
+        N = go_t.shape[0]
+        K = ia_t.shape[0]
+        E = group_end_offsets.shape[0]
+        return go_t.new_empty((E, N, K), dtype=out_dtype)
+
+
+def triton_mxfp8_wgrad_compile(
+    go_t: torch.Tensor,
+    go_scale: torch.Tensor,
+    ia_t: torch.Tensor,
+    ia_scale: torch.Tensor,
+    group_end_offsets: torch.Tensor,
+    out_dtype: torch.dtype = torch.bfloat16,
+    offsets_aligned_256: bool = False,
+) -> torch.Tensor:
+    """torch.compile-friendly entry point for the native MXFP8 wgrad.
+
+    Dispatches to the ``mxfp8::wgrad`` custom op (traces under
+    ``torch.compile(fullgraph=True)`` with zero graph breaks). Pass
+    ``offsets_aligned_256=True`` when all group offsets are multiples of 256
+    to enable the CDNA4 scale fast path without a host sync; the default
+    (False) is always safe.
+
+    Returns:
+        ``(E, N, K)`` bf16.
+    """
+    return torch.ops.mxfp8.wgrad(
+        go_t, go_scale, ia_t, ia_scale, group_end_offsets,
+        offsets_aligned_256, out_dtype,
+    )

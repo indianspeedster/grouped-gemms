@@ -663,3 +663,59 @@ else:
 
     def triton_mxfp8_grouped_mm(*args, **kwargs):
         raise NotImplementedError(_UNAVAILABLE_MSG)
+
+
+# ---------------------------------------------------------------------------
+# Compile-friendly forward / dgrad GEMM. The kernel is sync-free internally
+# but dynamo cannot trace the raw triton launch (it fails kernel analysis and
+# can fault the GPU). Wrapping it in a custom_op gives torch.compile a single
+# opaque op boundary with a fake/meta impl for shape propagation, so it traces
+# under fullgraph=True with zero graph breaks and no perf cost.
+# ---------------------------------------------------------------------------
+if _rocm_mxfp8_available:
+
+    @torch.library.custom_op("mxfp8::grouped_mm", mutates_args=())
+    def grouped_mm_op(
+        input_act: torch.Tensor,
+        weight: torch.Tensor,
+        input_act_scales: torch.Tensor,
+        weight_scales: torch.Tensor,
+        group_end_offsets: torch.Tensor,
+        out_dtype: torch.dtype,
+    ) -> torch.Tensor:
+        return triton_mxfp8_grouped_mm(
+            input_act, weight, input_act_scales, weight_scales,
+            group_end_offsets, out_dtype=out_dtype,
+        )
+
+    @grouped_mm_op.register_fake
+    def _grouped_mm_op_fake(
+        input_act, weight, input_act_scales, weight_scales,
+        group_end_offsets, out_dtype,
+    ):
+        M = input_act.shape[0]
+        N = weight.shape[1]
+        return input_act.new_empty((M, N), dtype=out_dtype)
+
+
+def triton_mxfp8_grouped_mm_compile(
+    input_act: torch.Tensor,
+    weight: torch.Tensor,
+    input_act_scales: torch.Tensor,
+    weight_scales: torch.Tensor,
+    group_end_offsets: torch.Tensor,
+    out_dtype: torch.dtype = torch.bfloat16,
+) -> torch.Tensor:
+    """torch.compile-friendly entry point for the MXFP8 forward / dgrad GEMM.
+
+    Dispatches to the ``mxfp8::grouped_mm`` custom op, which traces under
+    ``torch.compile(fullgraph=True)`` with zero graph breaks. Same numerics as
+    ``triton_mxfp8_grouped_mm``.
+
+    Returns:
+        ``(M, N)`` bf16.
+    """
+    return torch.ops.mxfp8.grouped_mm(
+        input_act, weight, input_act_scales, weight_scales,
+        group_end_offsets, out_dtype,
+    )

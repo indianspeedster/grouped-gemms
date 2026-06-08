@@ -24,7 +24,19 @@
 
 """MXFP8 (e4m3 + e8m0) grouped-GEMM kernels for ROCm gfx950+."""
 
-from .backward import triton_mxfp8_wgrad
-from .forward import triton_mxfp8_grouped_mm
+from .backward import (
+    triton_mxfp8_wgrad,
+    triton_mxfp8_wgrad_compile,
+    triton_mxfp8_wgrad_v2,
+    triton_mxfp8_wgrad_v2_compile,
+)
+from .forward import triton_mxfp8_grouped_mm, triton_mxfp8_grouped_mm_compile
 
-__all__ = ["triton_mxfp8_grouped_mm", "triton_mxfp8_wgrad"]
+__all__ = [
+    "triton_mxfp8_grouped_mm",
+    "triton_mxfp8_grouped_mm_compile",
+    "triton_mxfp8_wgrad",
+    "triton_mxfp8_wgrad_compile",
+    "triton_mxfp8_wgrad_v2",
+    "triton_mxfp8_wgrad_v2_compile",
+]
