@@ -52,6 +52,15 @@ if _rocm_mxfp8_available:
         _shuffle_x_scales_cdna4_nonkdim32,
     )
 
+    # Tuned BLOCK configs for stacked wgrad (forward-kernel-backed wgrad_v2).
+    # Key: (E, M_stack, N_out, K_inner) = (E, E*N_tokens, K_wgrad, Mg).
+    # Populated by tuning/tune_wgrad_stacked.py sweep on MI350.
+    _BEST_CFGS_WGRAD_STACKED = {}  # populated by sweep
+    _FALLBACK_WGRAD_STACKED = dict(
+        BLOCK_M=256, BLOCK_N=256, BLOCK_K=256,
+        GROUP_M=8, num_warps=8, num_stages=2, waves_per_eu=2,
+    )
+
     @triton.jit
     def _wgrad_pid_grid(
         pid,
@@ -1098,7 +1107,19 @@ def triton_mxfp8_wgrad_v2(
             Bs[g] = ia_scale[:, gs // 32 : gs // 32 + Mg // 32]
         offs = go_t.new_tensor([N * (g + 1) for g in range(E)], dtype=torch.int32)
 
-        result = triton_mxfp8_grouped_mm(A, B, As, Bs, offs, out_dtype=out_dtype)
+        # Look up tuned config using forward-kernel shape key:
+        # A = (E*N, Mg), B = (E, K, Mg) → forward _pick_config(E, E*N, K, Mg)
+        cfg = _BEST_CFGS_WGRAD_STACKED.get((E, E * N, K, Mg), _FALLBACK_WGRAD_STACKED)
+        result = triton_mxfp8_grouped_mm(
+            A, B, As, Bs, offs, out_dtype=out_dtype,
+            BLOCK_M=cfg["BLOCK_M"],
+            BLOCK_N=cfg["BLOCK_N"],
+            BLOCK_K=cfg["BLOCK_K"],
+            GROUP_M=cfg["GROUP_M"],
+            num_warps=cfg["num_warps"],
+            num_stages=cfg["num_stages"],
+            waves_per_eu=cfg["waves_per_eu"],
+        )
         # result shape: (E*N, K) → reshape to (E, N, K)
         return result.view(E, N, K).contiguous()
     else:

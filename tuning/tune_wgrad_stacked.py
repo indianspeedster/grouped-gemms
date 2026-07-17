@@ -67,10 +67,11 @@ for e, m, n, k in shapes:
             pass
 
     best_tf = flops / best_t / 1e6
-    best_cfgs[(e, m, n, k)] = best_cfg
+    # Store with forward-kernel key: (E, E*N_tokens, K_wgrad, Mg)
+    best_cfgs[(e, e * n, k, Mg)] = best_cfg
     print(f"({e},{m//1000:>3d}K,{n},{k}): BLOCK=({best_cfg[0]},{best_cfg[1]},{best_cfg[2]}) GM={best_cfg[3]} nw={best_cfg[4]} ns={best_cfg[5]} wpe={best_cfg[6]} -> {best_tf:.0f} TFLOPS")
 
 print("\n_BEST_CFGS_WGRAD_STACKED = {")
-for (e, m, n, k), cfg in best_cfgs.items():
-    print(f"    ({e}, {m}, {n}, {k}): dict(BLOCK_M={cfg[0]}, BLOCK_N={cfg[1]}, BLOCK_K={cfg[2]}, GROUP_M={cfg[3]}, num_warps={cfg[4]}, num_stages={cfg[5]}, waves_per_eu={cfg[6]}),")
+for (e, em, k_out, mg), cfg in best_cfgs.items():
+    print(f"    ({e}, {em}, {k_out}, {mg}): dict(BLOCK_M={cfg[0]}, BLOCK_N={cfg[1]}, BLOCK_K={cfg[2]}, GROUP_M={cfg[3]}, num_warps={cfg[4]}, num_stages={cfg[5]}, waves_per_eu={cfg[6]}),")
 print("}")
