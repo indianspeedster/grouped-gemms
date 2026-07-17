@@ -2,7 +2,7 @@
 import time, math, torch
 from kernels.mxfp8.backward import triton_mxfp8_wgrad, triton_mxfp8_wgrad_fast, triton_mxfp8_wgrad_v2
 from kernels.mxfp8.wgrad_gluon import triton_mxfp8_wgrad_gluon
-from kernels.mxfp8.wgrad_stacked_opt import triton_mxfp8_wgrad_stacked_opt
+from kernels.mxfp8.stack_copy import triton_mxfp8_wgrad_stacked
 from utils import generate_jagged_offs, to_mx, benchmark_cuda_function_in_microseconds
 
 torch.manual_seed(42)
@@ -36,7 +36,7 @@ for e, m, n, k, label in shapes:
     fast = benchmark_cuda_function_in_microseconds(triton_mxfp8_wgrad_fast, gf, gs, iaf, iss, offs)
     v2 = benchmark_cuda_function_in_microseconds(triton_mxfp8_wgrad_v2, gf, gs, iaf, iss, offs)
     glu = benchmark_cuda_function_in_microseconds(triton_mxfp8_wgrad_gluon, gf, gs, iaf, iss, offs)
-    stk = benchmark_cuda_function_in_microseconds(triton_mxfp8_wgrad_stacked_opt, gf, gs, iaf, iss, offs)
+    stk = benchmark_cuda_function_in_microseconds(triton_mxfp8_wgrad_stacked, gf, gs, iaf, iss, offs)
 
     nat_tf = flops / nat / 1e6
     fast_tf = flops / fast / 1e6
